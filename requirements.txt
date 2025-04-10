@@ -1,7 +1,13 @@
 streamlit==1.32.2
 google-generativeai==0.3.2
 langchain==0.1.14
-faiss-cpu
+faiss-cpu==1.7.4
 tiktoken==0.6.0
-beautifulsoup4
 sentence-transformers
+rank_bm25
+beautifulsoup4
+pandas
+unstructured
+PyMuPDF
+python-dotenv
+torch
