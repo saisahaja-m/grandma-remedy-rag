@@ -10,4 +10,4 @@ pandas
 unstructured
 PyMuPDF
 python-dotenv
-torch
+torch==2.1.0+cpu
