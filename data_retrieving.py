@@ -10,6 +10,9 @@ from typing import List, Dict, Any
 
 # Create a custom scikit-learn based retriever
 class CustomSKLearnRetriever(BaseRetriever):
+    documents: List[Document]  # Define as class field
+    k: int  # Define as class field
+
     def __init__(self, documents: List[Document], k: int = 5):
         """Initialize with documents and retrieval count."""
         self.documents = documents
