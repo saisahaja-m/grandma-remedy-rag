@@ -1,5 +1,5 @@
 from langchain_community.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import google.generativeai as genai
 import streamlit as st
