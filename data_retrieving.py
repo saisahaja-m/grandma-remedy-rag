@@ -6,18 +6,21 @@ import google.generativeai as genai
 import streamlit as st
 import numpy as np
 from typing import List, Dict, Any
+from pydantic import BaseModel, Field
 
 
 # Create a custom scikit-learn based retriever
-class CustomSKLearnRetriever(BaseRetriever):
-    documents: List[Document]  # Define as class field
-    k: int  # Define as class field
+class CustomSKLearnRetriever(BaseRetriever, BaseModel):
+    documents: List[Document] = Field(default_factory=list)
+    k: int = 5
 
-    def __init__(self, documents: List[Document], k: int = 5):
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **kwargs):
         """Initialize with documents and retrieval count."""
-        self.documents = documents
-        self.k = k
-        self.texts = [doc.page_content for doc in documents]
+        super().__init__(**kwargs)
+        self.texts = [doc.page_content for doc in self.documents]
 
         # Create and fit the TF-IDF vectorizer
         self.vectorizer = TfidfVectorizer()
