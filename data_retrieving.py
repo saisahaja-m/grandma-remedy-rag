@@ -5,26 +5,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 import google.generativeai as genai
 import streamlit as st
 import numpy as np
-from typing import List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
 
 
 # Create a custom scikit-learn based retriever
-class CustomSKLearnRetriever(BaseRetriever, BaseModel):
-    documents: List[Document] = Field(default_factory=list)
-    k: int = 5
+class CustomSKLearnRetriever(BaseRetriever):
+    """Scikit-learn based retriever that uses TF-IDF and cosine similarity."""
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, **kwargs):
+    def __init__(self, documents: List[Document], k: int = 5):
         """Initialize with documents and retrieval count."""
-        super().__init__(**kwargs)
-        self.texts = [doc.page_content for doc in self.documents]
+        self.k = k
+        self._docs = documents
+        self.texts = [doc.page_content for doc in documents]
 
         # Create and fit the TF-IDF vectorizer
         self.vectorizer = TfidfVectorizer()
         self.doc_vectors = self.vectorizer.fit_transform(self.texts)
+
+    @property
+    def documents(self) -> List[Document]:
+        """Property for accessing documents."""
+        return self._docs
 
     def get_relevant_documents(self, query: str) -> List[Document]:
         """Get documents relevant to the query."""
@@ -36,7 +37,11 @@ class CustomSKLearnRetriever(BaseRetriever, BaseModel):
         top_k_indices = similarities.argsort()[-self.k:][::-1]
 
         # Return the top k documents
-        return [self.documents[i] for i in top_k_indices]
+        return [self._docs[i] for i in top_k_indices]
+
+    async def aget_relevant_documents(self, query: str) -> List[Document]:
+        """Async version of get_relevant_documents."""
+        return self.get_relevant_documents(query)
 
 
 @st.cache_resource
