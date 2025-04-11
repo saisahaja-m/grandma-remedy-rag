@@ -10,4 +10,4 @@ unstructured==0.10.25
 PyMuPDF==1.23.26
 python-dotenv==1.0.1
 torch==2.2.1
-scikit-learn
+faiss
