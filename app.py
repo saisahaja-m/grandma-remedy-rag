@@ -84,7 +84,7 @@ def main():
             <style>
             .footer {
                 position: fixed;
-                right: 20px;
+                left: 20px;
                 bottom: 10px;
                 font-size: 0.85rem;
                 color: #888;
