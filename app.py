@@ -79,4 +79,24 @@ def main():
             st.markdown(response.text)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
 
+        st.markdown(
+            """
+            <style>
+            .footer {
+                position: fixed;
+                right: 20px;
+                bottom: 10px;
+                font-size: 0.85rem;
+                color: #888;
+                font-style: italic;
+                z-index: 9999;
+            }
+            </style>
+            <div class="footer">
+                Grandma’s secrets, unlocked by <span style="color:#ff4b4b;">Sahaja</span>.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 main()
