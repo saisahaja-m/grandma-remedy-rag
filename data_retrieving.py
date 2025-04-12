@@ -1,4 +1,4 @@
-from langchain_community.vectorstores import FAISS
+from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import google.generativeai as genai
