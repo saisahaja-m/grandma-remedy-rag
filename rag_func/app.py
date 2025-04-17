@@ -1,10 +1,15 @@
+import os
 import streamlit as st
 import google.generativeai as genai
 from process_data import load_and_process_documents
 from data_retrieving import setup_retrieval_system
+from rag_evaluation import run_ragas_eval
+from dotenv import load_dotenv
 
-GOOGLE_API_KEY = "AIzaSyBm_X0w1tq3QD_yRuQ2jnV4LV77NsSTc5Y"
-genai.configure(api_key=GOOGLE_API_KEY)
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
 
 @st.cache_resource
 def load_gemini_model():
@@ -21,11 +26,10 @@ def format_chat_history(messages, max_tokens=1000):
         user_msg = messages[i]["content"]
         assistant_msg = messages[i + 1]["content"] if i + 1 < len(messages) else ""
         history += f"User: {user_msg}\nGrandma: {assistant_msg}\n"
-    # Trim history if needed
     return history[-max_tokens:]
 
 def main():
-    st.set_page_config(page_title="🌿 Grandma's Remedy RAG", page_icon="🌿", layout="wide")
+    st.set_page_config(page_title="🌿 Grandma's Remedy RAG", layout="wide")
     st.title("🌿 Grandma's Remedy RAG")
 
     if "messages" not in st.session_state:
@@ -45,6 +49,7 @@ def main():
         retriever = retrieval_system["retriever"]
         relevant_docs = retriever.get_relevant_documents(user_input)
 
+        context_docs = [doc.page_content for doc in relevant_docs]
         context = "\n\n".join([
             f"SOURCE: {doc.metadata.get('title', 'Unknown')}\n{doc.page_content}"
             for doc in relevant_docs
@@ -64,39 +69,26 @@ def main():
         {context}
 
         INSTRUCTIONS:
-        1. Use Namaste only for first greeting message and not for any other.
-        2. Respond in a warm, loving Indian grandma tone using words like beta or baccha.
-        3. Recommend 1–3 home remedies from the RELEVANT REMEDIES section.
-        4. Explain preparation and usage.
-        5. End with a kind note or health wish.
-        6. If you don't know, say so lovingly.
+            1. Only answer to the questions related to health and body
+            2. Be warm and loving, use terms like beta or baccha, but never make things up.
+            3. Use reliable sources, like books or websites, when mentioning remedies.
+            4. Always back up your advice with references when possible.
+            5. Don't make exaggerated claims—let the remedies speak for themselves.
+            6. Provide references when you mention them, but in a friendly manner.
         """
 
         model = load_gemini_model()
         response = model.generate_content(grandma_prompt)
+        assistant_reply = response.text
 
         with st.chat_message("assistant"):
-            st.markdown(response.text)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
+            st.markdown(assistant_reply)
 
-        st.markdown(
-            """
-            <style>
-            .footer {
-                position: fixed;
-                left: 20px;
-                bottom: 10px;
-                font-size: 0.85rem;
-                color: #888;
-                font-style: italic;
-                z-index: 9999;
-            }
-            </style>
-            <div class="footer">
-                Grandma’s secrets, unlocked by <span style="color:#ff4b4b;">Sahaja</span>.
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
 
+        with st.spinner("Running RAG evaluation..."):
+            result = run_ragas_eval(user_input, assistant_reply, context_docs)
+            st.write(result)
+
+        st.markdown("Grandma’s secrets, unlocked by Sahaja.")
 main()

@@ -6,14 +6,17 @@ import streamlit as st
 
 from langchain.schema import Document
 from langchain.document_loaders import WebBaseLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 urls = [
     "https://www.healthline.com/nutrition/12-foods-that-help-digestion",
     "https://www.lybrate.com/topic/home-remedies-for-digestion",
     "https://www.stylecraze.com/articles/home-remedies-for-hair-fall/",
     "https://www.healthline.com/health/home-remedies#takeaway",
-    "https://www.hopkinsmedicine.org/health/wellness-and-prevention/natural-sleep-aids-home-remedies-to-help-you-sleep"
+    "https://www.hopkinsmedicine.org/health/wellness-and-prevention/natural-sleep-aids-home-remedies-to-help-you-sleep",
+    "https://www.healthline.com/health/dental-and-oral-health/home-remedies-for-toothache",
+    "https://www.dhconcepts.com/7-home-remedies-for-dental-issues/",
+    "https://www.healthline.com/health/pain-relief/knee-pain-home-remedies",
+    "https://www.healthline.com/recipes/cozy-dinner-ideas"
 ]
 @st.cache_resource
 def load_and_process_documents() -> List[Document]:
@@ -48,10 +51,27 @@ def load_and_process_documents() -> List[Document]:
             }
         ) for entry in remedy_data]
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=150,
-                                                   separators=["\n\n", "\n", ". ", " ", ""])
-    all_docs = text_splitter.split_documents(clean_web_docs + remedy_docs)
+    all_docs = []
+
+    for doc in clean_web_docs + remedy_docs:
+        chunks = custom_chunk_text(doc.page_content, chunk_size=700, chunk_overlap=100)
+        for chunk in chunks:
+            all_docs.append(Document(page_content=chunk, metadata=doc.metadata))
+
     return all_docs
+
+def custom_chunk_text(text: str, chunk_size: int, chunk_overlap: int) -> List[str]:
+    """Manually split text into chunks"""
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    while start < text_length:
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        start += chunk_size - chunk_overlap
+
+    return chunks
 
 def extract_title(content: str) -> str:
     """Extract a title from content"""
