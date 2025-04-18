@@ -1,10 +1,11 @@
 import os
 import streamlit as st
 import google.generativeai as genai
-from process_data import load_and_process_documents
-from data_retrieving import setup_retrieval_system
-from rag_evaluation import run_ragas_eval
+from rag_func.process_file import load_and_process_documents
+from rag_func.data_retrieving import setup_retrieval_system
+from rag_func.data_evaluation import run_ragas_eval
 from dotenv import load_dotenv
+from rag_func.rerank_docs import rerank_with_gemini
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ def format_chat_history(messages, max_tokens=1000):
     return history[-max_tokens:]
 
 def main():
-    st.set_page_config(page_title="🌿 Grandma's Remedy RAG", layout="wide")
+    st.set_page_config(page_title="Grandma's Remedy RAG", page_icon="🌿", layout="wide")
     st.title("🌿 Grandma's Remedy RAG")
 
     if "messages" not in st.session_state:
@@ -50,9 +51,11 @@ def main():
         relevant_docs = retriever.get_relevant_documents(user_input)
 
         context_docs = [doc.page_content for doc in relevant_docs]
+        reranked_docs = rerank_with_gemini(user_input, relevant_docs, retrieval_system["model"])
+
         context = "\n\n".join([
             f"SOURCE: {doc.metadata.get('title', 'Unknown')}\n{doc.page_content}"
-            for doc in relevant_docs
+            for doc in reranked_docs
         ])
 
         chat_history = format_chat_history(st.session_state.messages[:-1])
