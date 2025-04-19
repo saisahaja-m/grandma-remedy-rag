@@ -5,7 +5,7 @@ from rag_func.process_file import load_and_process_documents
 from rag_func.data_retrieving import setup_retrieval_system
 from rag_func.data_evaluation import run_ragas_eval
 from dotenv import load_dotenv
-from rag_func.rerank_docs import rerank_with_gemini
+from rag_func.rerank_docs import rerank_with_groq
 
 load_dotenv()
 
@@ -51,7 +51,7 @@ def main():
         relevant_docs = retriever.get_relevant_documents(user_input)
 
         context_docs = [doc.page_content for doc in relevant_docs]
-        reranked_docs = rerank_with_gemini(user_input, relevant_docs, retrieval_system["model"])
+        reranked_docs = rerank_with_groq(user_input, relevant_docs)
 
         context = "\n\n".join([
             f"SOURCE: {doc.metadata.get('title', 'Unknown')}\n{doc.page_content}"
