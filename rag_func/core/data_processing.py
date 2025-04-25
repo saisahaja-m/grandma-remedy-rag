@@ -11,9 +11,9 @@ from llama_index.core.node_parser import SentenceWindowNodeParser
 
 def get_chunking_strategy():
     active_chunking = ACTIVE_CONFIG.get("chunking", "default")
-    chunking_config = CHUNKING.get(active_chunking, CHUNKING["default"])
+    chunking_config = CHUNKING.get(active_chunking, CHUNKING["semantic"])
 
-    chunking_type = chunking_config.get("type", "recursive")
+    chunking_type = chunking_config.get("type", "semantic")
 
     if chunking_type == "manual":
         return ManualChunker(
@@ -29,6 +29,11 @@ def get_chunking_strategy():
         return RecursiveTextChunker(
             chunk_size=chunking_config.get("chunk_size", 700),
             chunk_overlap=chunking_config.get("chunk_overlap", 150)
+        )
+    elif chunking_type == "semantic":
+        return SemanticChunker(
+            chunk_size=chunking_config.get("chunk_size"),
+            chunk_overlap=chunking_config.get("chunk_overlap")
         )
 
 
@@ -99,6 +104,7 @@ class ManualChunker():
 
         return chunks
 
+
 class RecursiveTextChunker():
 
     def __init__(self, chunk_size: int, chunk_overlap: int):
@@ -111,6 +117,7 @@ class RecursiveTextChunker():
 
     def chunk_text(self, text: str) -> List[str]:
         return self.text_splitter.split_text(text)
+
 
 class SentenceWindowChunker:
 
@@ -125,6 +132,33 @@ class SentenceWindowChunker:
         nodes = self.parser.get_nodes_from_documents([document])
         return [node.text for node in nodes]
 
+
+class SemanticChunker():
+    def __init__(self, chunk_size: int, chunk_overlap: int):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+    def chunk_text(self, text: str) -> List[str]:
+        from flair.splitter import SegtokSentenceSplitter
+
+        splitter = SegtokSentenceSplitter()
+
+        sentences = splitter.split(text)
+
+        chunks = []
+        current_chunk = ""
+
+        for sentence in sentences:
+            if len(current_chunk) + len(sentence.to_plain_string()) <= self.chunk_size:
+                current_chunk += " " + sentence.to_plain_string()
+            else:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence.to_plain_string()
+
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        return chunks
 
 def extract_title(content: str) -> str:
     lines = content.split('\n')

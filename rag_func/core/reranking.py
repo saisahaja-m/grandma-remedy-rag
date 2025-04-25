@@ -6,7 +6,7 @@ from typing import List, Dict
 
 
 def get_reranker():
-    rerank_config = RERANKING["groq"]
+    rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
     rerank_type = rerank_config["type"]
 
     if rerank_type == "groq":

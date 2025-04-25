@@ -30,14 +30,9 @@ def initialize_rag_system():
 
 
 def process_user_query(rag_system, user_input):
-    # Retrieve and rerank relevant documents
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
-    text_docs = [
-        f"SOURCE: {doc.metadata.get('title', 'Unknown')}\n{doc.page_content}"
-        for doc in relevant_docs
-    ]
 
-    reranked_docs = rag_system["reranker"].rerank(user_input, text_docs)
+    reranked_docs = rag_system["reranker"].rerank(user_input, relevant_docs)
 
     # Prepare context and generate response
     context = format_context_from_docs(reranked_docs)
@@ -45,14 +40,15 @@ def process_user_query(rag_system, user_input):
     prompt = create_system_prompt(user_input, chat_history, context)
     response = rag_system["llm"].generate_response(prompt)
 
-    # Evaluate response quality
+    return response, reranked_docs
+
+def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
     evaluation_result = rag_system["evaluator"].evaluate(
         user_input, response, context_docs
     )
 
-    return response, reranked_docs, evaluation_result
-
+    return evaluation_result
 
 def display_chat_history():
     for message in st.session_state.messages:
@@ -76,13 +72,16 @@ def main():
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        response, _, evaluation_result = process_user_query(rag_system, user_input)
+        response, reranked_docs = process_user_query(rag_system, user_input)
+
         with st.chat_message("assistant"):
             st.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
         with st.spinner("Evaluating response quality..."):
+            evaluation_result = evaluate_response(rag_system=rag_system, reranked_docs=reranked_docs,
+                                                  response=response, user_input=user_input)
             st.write("Evaluation result:", evaluation_result)
 
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")

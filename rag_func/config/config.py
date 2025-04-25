@@ -8,6 +8,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
 
 # URLs for data sources
 URLS = [
@@ -34,13 +35,9 @@ EMBEDDING_MODELS = {
         "type": "huggingface",
         "model_name": "all-MiniLM-L6-v2"
     },
-    "openai": {
-        "type": "openai",
-        "model_name": "text-embedding-ada-002"
-    },
-    "cohere": {
-        "type": "cohere",
-        "model_name": "embed-english-v3.0"
+    "voyageai":{
+        "type": "voyageai",
+        "model_name": "voyage-3"
     }
 }
 
@@ -141,6 +138,11 @@ CHUNKING = {
     },
     "markdown": {
         "type": "markdown"
+    },
+    "semantic": {
+        "type": "semantic",
+        "chunk_size": 1000,
+        "chunk_overlap": 200
     }
 }
 
