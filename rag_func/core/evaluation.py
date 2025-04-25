@@ -1,7 +1,6 @@
 from ragas.metrics import faithfulness, answer_relevancy, ResponseGroundedness, ContextRelevance
 from ragas import evaluate
 from datasets import Dataset
-from typing import List, Dict, Any, Union
 from rag_func.config.config import EVALUATION, ACTIVE_CONFIG
 
 

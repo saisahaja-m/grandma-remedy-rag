@@ -1,13 +1,13 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 # API Keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 
 # URLs for data sources
 URLS = [
@@ -115,6 +115,32 @@ RERANKING = {
         "type": "groq",
         "model": "llama3-8b-8192",
         "top_k": 5
+    },
+    "cohere":{
+        "type": "cohere",
+        "model": "rerank-v3.5",
+        "top_k": 5
+    }
+}
+
+CHUNKING = {
+    "default": {
+        "type": "manual",
+        "chunk_size": 700,
+        "chunk_overlap": 100
+    },
+    "sentence_window": {
+        "type": "sentence_window",
+        "max_window_size": 5,
+        "stride": 2
+    },
+    "recursive": {
+        "type": "recursive",
+        "chunk_size": 1000,
+        "chunk_overlap": 200
+    },
+    "markdown": {
+        "type": "markdown"
     }
 }
 
@@ -150,5 +176,6 @@ ACTIVE_CONFIG = {
     "retrieval": "default",
     "llm": "default",
     "evaluation": "default",
-    "reranking": "default"
+    "reranking": "default",
+    "chunking": "default"
 }
