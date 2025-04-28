@@ -73,7 +73,11 @@ RETRIEVAL = {
     },
     "bm25_only": {
         "type": "bm25",
-        "k": 5
+        "k": 20
+    },
+    "semantic":{
+        "type": "semantic",
+        "k": 20
     }
 }
 
@@ -107,9 +111,9 @@ EVALUATION = {
         "type": "ragas",
         "metrics": ["faithfulness", "answer_relevancy", "groundedness", "context_relevance"]
     },
-    "custom": {
-        "type": "custom",
-        "metrics": ["accuracy", "coherence"]
+    "trulens":{
+        "type": "trulens",
+        "metrics": []
     }
 }
 

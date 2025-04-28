@@ -14,12 +14,6 @@ def create_vector_store(docs):
     if vector_store_type == "faiss":
         return FAISS.from_documents(docs, embedding_model)
 
-    # elif vector_store_type == "chroma":
-    #     return Chroma.from_documents(
-    #         docs,
-    #         embedding_model,
-    #         persist_directory=vector_store_config.get("persist_directory")
-    #     )
 
     elif vector_store_type == "chroma":
         return ChromaVectorStore(
