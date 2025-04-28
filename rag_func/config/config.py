@@ -38,6 +38,10 @@ EMBEDDING_MODELS = {
     "voyageai":{
         "type": "voyageai",
         "model_name": "voyage-3"
+    },
+    "cohere":{
+        "type": "cohere",
+        "model_name": "embed-v4.0"
     }
 }
 
@@ -49,6 +53,9 @@ VECTOR_STORES = {
     "chroma": {
         "type": "chroma",
         "persist_directory": "./chroma_db"
+    },
+    "qdrant":{
+        "type": "qdrant"
     }
 }
 
@@ -120,6 +127,11 @@ RERANKING = {
     "cohere":{
         "type": "cohere",
         "model": "rerank-v3.5",
+        "top_k": 5
+    },
+    "jina":{
+        "type": "jina",
+        "model": "jina-reranker-v2-base-multilingual",
         "top_k": 5
     }
 }

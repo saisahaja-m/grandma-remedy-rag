@@ -1,12 +1,13 @@
+import cohere
 import requests
+import json
 from langchain.schema import Document
 from rag_func.config.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY
-import cohere
 from typing import List, Dict
 
 
 def get_reranker():
-    rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
+    rerank_config = RERANKING["jina"]
     rerank_type = rerank_config["type"]
 
     if rerank_type == "groq":
@@ -17,9 +18,14 @@ def get_reranker():
     elif rerank_type == "cohere":
         return CohereReranker(
             model=rerank_config["model"])
+    elif rerank_type == "jina":
+        return JinaReranker(
+            model=rerank_config["model"],
+            top_k=rerank_config["top_k"]
+        )
 
 
-class GroqReranker():
+class GroqReranker:
 
     def __init__(self, model, top_k=5):
         self.model = model
@@ -94,3 +100,32 @@ class CohereReranker:
         for result in response.results
         if result.document and result.document.get("text")
     ]
+
+
+class JinaReranker:
+    def __init__(self, model, top_k):
+        self.model = model
+        self.top_k = top_k
+
+    def rerank(self, query, documents):
+        formatted_docs = [{"text": doc.page_content} for doc in documents]
+
+        url = 'https://api.jina.ai/v1/rerank'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer jina_85bf0e24ca9646a7860a7095e4771a69x0FCKbVTF9JRNEb_bT88iQF4xiou'
+        }
+        data = {
+            "model": self.model,
+            "query": query,
+            "top_n": self.top_k,
+            "documents": formatted_docs,
+            "return_documents": False
+        }
+
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response_data = response.json()
+
+        reranked_documents = response_data.get("reranked_documents", [])
+
+        return reranked_documents
