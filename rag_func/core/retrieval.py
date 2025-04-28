@@ -96,3 +96,82 @@ class ChromaVectorStore:
         distances = results.get('distances', [[]])[0]
 
         return [(doc, float(dist)) for doc, dist in zip(documents, distances)]
+
+
+class QdrantVectorStore:
+    def __init__(self, documents, embeddings_model):
+        host = "localhost"
+        port = 6333
+        self.client = QdrantClient(host=host, port=port)
+
+        self._collection_name = "collection_" + uuid.uuid4().hex[:8]
+
+        self.documents = documents
+        self.embeddings_model = embeddings_model
+
+        self._id_to_doc = {}
+
+        if documents and embeddings_model:
+            texts = [doc.page_content for doc in documents]
+            self.embeddings = embeddings_model.embed_documents(texts)
+            vector_size = len(self.embeddings[0])
+            self.client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=VectorParams(
+                    size=vector_size,
+                    distance=Distance.COSINE
+                )
+            )
+            self.add_documents()
+
+    def add_documents(self) -> None:
+        if not self.documents or not self.embeddings:
+            return
+
+        ids = [i for i in range(len(self.documents))]
+        self._id_to_doc.update({doc_id: doc for doc_id, doc in zip(ids, self.documents)})
+
+        points = []
+        for i, (embedding, document) in enumerate(zip(self.embeddings, self.documents)):
+            points.append(
+                PointStruct(
+                    id=ids[i],
+                    vector=embedding,
+                    payload={"text": document}
+                )
+            )
+
+        self.client.upsert(
+            collection_name=self._collection_name,
+            points=points
+        )
+
+    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float]]:
+        if not self._id_to_doc:
+            return []
+
+        available_docs = len(self._id_to_doc)
+        limit = min(max(1, top_k), available_docs)
+
+        results = self.client.search(
+            collection_name=self._collection_name,
+            query_vector=query_embedding,
+            limit=limit
+        )
+
+        result_tuples = []
+        for scored_point in results:
+            doc_text = scored_point.payload.get("text", "")
+            distance = scored_point.score
+            result_tuples.append((doc_text, float(distance)))
+
+        return result_tuples
+
+
+
+    # elif vector_store_type == "chroma":
+    #     return Chroma.from_documents(
+    #         docs,
+    #         embedding_model,
+    #         persist_directory=vector_store_config.get("persist_directory")
+    #     )
