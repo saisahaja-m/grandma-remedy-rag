@@ -56,6 +56,9 @@ VECTOR_STORES = {
     },
     "qdrant":{
         "type": "qdrant"
+    },
+    "annoy":{
+        "type": "annoy"
     }
 }
 
@@ -83,7 +86,7 @@ RETRIEVAL = {
 
 # LLM configurations
 LLM_MODELS = {
-    "default": {
+    "gemini": {
         "type": "gemini",
         "model_name": "gemini-2.0-flash-exp",
         "temperature": 0.2

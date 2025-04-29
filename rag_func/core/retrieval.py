@@ -6,10 +6,12 @@ from typing import Dict, List, Tuple
 import uuid
 import chromadb
 from rag_func.config.enums import VectorStoresEnum, RetrievalTypesEnum
+from langchain_community.vectorstores import Annoy
+
 
 def create_vector_store(docs):
     embedding_model = get_embedding_model()
-    vector_store_config = VECTOR_STORES[ACTIVE_CONFIG["vector_store"]]
+    vector_store_config = VECTOR_STORES["annoy"]
     vector_store_type = vector_store_config["type"]
 
     if vector_store_type == VectorStoresEnum.Faiss.value:
@@ -17,6 +19,8 @@ def create_vector_store(docs):
 
     elif vector_store_type == VectorStoresEnum.Chroma.value:
         return ChromaVectorStore(docs, embedding_model)
+    elif vector_store_type == VectorStoresEnum.Annoy.value:
+        return AnnoyVectorStore(docs, embeddings=embedding_model)
 
 
 def get_retriever(docs):
@@ -164,3 +168,13 @@ class QdrantVectorStore:
     #         embedding_model,
     #         persist_directory=vector_store_config.get("persist_directory")
     #     )
+
+class AnnoyVectorStore:
+    def __init__(self, documents, embeddings):
+        self.documents = documents
+        self.embeddings = embeddings
+
+    def vector_store(self):
+        vector_store = Annoy.from_documents(documents=self.documents, embedding=self.embeddings)
+
+        return vector_store

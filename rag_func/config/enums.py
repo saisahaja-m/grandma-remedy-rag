@@ -45,6 +45,7 @@ class EvaluatingMetricsEnum(Enum):
 class VectorStoresEnum(Enum):
     Faiss = "faiss"
     Chroma = "chroma"
+    Annoy = "annoy"
 
 
 class RetrievalTypesEnum(Enum):
