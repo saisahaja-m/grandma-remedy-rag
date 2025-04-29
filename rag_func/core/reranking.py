@@ -32,20 +32,18 @@ class GroqReranker():
 
         for doc in documents:
             prompt = f"""
-            You are a helpful assistant. Score the relevance of the following context to the user's query on a scale from 0 to 1.
-
-            Query: {query}
-            
+            You are a helpful assistant. Score the relevance of the following context to the 
+            user's query on a scale from 0 to 1.
+            Query: {query}        
             Context:
             {doc.page_content}
-            
+    
             Score (just a number between 0 and 1):"""
 
             try:
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                }
+                    "Content-Type": "application/json"}
 
                 data = {
                     "model": self.model,

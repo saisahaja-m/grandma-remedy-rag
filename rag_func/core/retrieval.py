@@ -5,46 +5,41 @@ from rag_func.config.config import RETRIEVAL, VECTOR_STORES, ACTIVE_CONFIG
 from typing import Dict, List, Tuple
 import uuid
 import chromadb
+from rag_func.config.enums import VectorStoresEnum, RetrievalTypesEnum
 
 def create_vector_store(docs):
     embedding_model = get_embedding_model()
     vector_store_config = VECTOR_STORES[ACTIVE_CONFIG["vector_store"]]
     vector_store_type = vector_store_config["type"]
 
-    if vector_store_type == "faiss":
+    if vector_store_type == VectorStoresEnum.Faiss.value:
         return FAISS.from_documents(docs, embedding_model)
 
-
-    elif vector_store_type == "chroma":
-        return ChromaVectorStore(
-            docs,
-            embedding_model
-        )
+    elif vector_store_type == VectorStoresEnum.Chroma.value:
+        return ChromaVectorStore(docs, embedding_model)
 
 
 def get_retriever(docs):
     retrieval_config = RETRIEVAL[ACTIVE_CONFIG["retrieval"]]
     retrieval_type = retrieval_config["type"]
-    k = retrieval_config.get("k", 5)
+    k = retrieval_config["k"]
 
-    if retrieval_type == "vector":
+    if retrieval_type == RetrievalTypesEnum.Vector.value:
         vector_store = create_vector_store(docs)
         return vector_store.as_retriever(search_kwargs={"k": k})
 
-    elif retrieval_type == "bm25":
+    elif retrieval_type == RetrievalTypesEnum.bm25.value:
         bm25_retriever = BM25Retriever.from_documents(docs)
         bm25_retriever.k = k
         return bm25_retriever
 
-    elif retrieval_type == "ensemble":
-        # Create individual retrievers
+    elif retrieval_type == RetrievalTypesEnum.Ensemble.value:
         bm25_retriever = BM25Retriever.from_documents(docs)
         bm25_retriever.k = k
 
         vector_store = create_vector_store(docs)
         vector_retriever = vector_store.as_retriever(search_kwargs={"k": k})
 
-        # Create ensemble retriever
         weights = retrieval_config.get("weights", [0.5, 0.5])
         return EnsembleRetriever(
             retrievers=[bm25_retriever, vector_retriever],

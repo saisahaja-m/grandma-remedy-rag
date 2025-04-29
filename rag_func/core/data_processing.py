@@ -7,33 +7,35 @@ from langchain.document_loaders import WebBaseLoader
 from rag_func.config.config import URLS, CHUNKING, ACTIVE_CONFIG
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
+from rag_func.config.enums import ChunkingTypeEnum, DocProcessingEnum
 
 
 def get_chunking_strategy():
-    active_chunking = ACTIVE_CONFIG.get("chunking", "default")
-    chunking_config = CHUNKING.get(active_chunking, CHUNKING["semantic"])
+    chunking_config = CHUNKING[ACTIVE_CONFIG["chunking"]]
+    chunking_type = chunking_config["type"]
 
-    chunking_type = chunking_config.get("type", "semantic")
+    chunk_size = DocProcessingEnum.ChunkSize.value
+    chunk_overlap = DocProcessingEnum.ChunkOverlap.value
 
-    if chunking_type == "manual":
+    if chunking_type == ChunkingTypeEnum.Manual.value:
         return ManualChunker(
-            chunk_size=chunking_config.get("chunk_size", 700),
-            chunk_overlap=chunking_config.get("chunk_overlap", 100)
+            chunk_size=chunking_config[chunk_size],
+            chunk_overlap=chunking_config[chunk_overlap]
         )
-    elif chunking_type == "sentence_window":
+    elif chunking_type == ChunkingTypeEnum.SentenceWindow.value:
         return SentenceWindowChunker(
-            window_size=chunking_config.get("max_window_size", 5),
-            window_overlap=chunking_config.get("stride", 2)
+            window_size=chunking_config["max_window_size"],
+            window_overlap=chunking_config["stride"]
         )
-    elif chunking_type == "recursive":
+    elif chunking_type == ChunkingTypeEnum.Recursive.value:
         return RecursiveTextChunker(
-            chunk_size=chunking_config.get("chunk_size", 700),
-            chunk_overlap=chunking_config.get("chunk_overlap", 150)
+            chunk_size=chunking_config[chunk_size],
+            chunk_overlap=chunking_config[chunk_overlap]
         )
-    elif chunking_type == "semantic":
+    elif chunking_type == ChunkingTypeEnum.Semantic.value:
         return SemanticChunker(
-            chunk_size=chunking_config.get("chunk_size"),
-            chunk_overlap=chunking_config.get("chunk_overlap")
+            chunk_size=chunking_config[chunk_size],
+            chunk_overlap=chunking_config[chunk_overlap]
         )
 
 
@@ -77,7 +79,6 @@ def load_and_process_documents() -> List[Document]:
         ) for entry in remedy_data
     ]
 
-    # Combine and chunk all documents
     all_docs = []
 
     for doc in clean_web_docs + remedy_docs:
@@ -87,7 +88,8 @@ def load_and_process_documents() -> List[Document]:
 
     return all_docs
 
-class ManualChunker():
+
+class ManualChunker:
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -105,7 +107,7 @@ class ManualChunker():
         return chunks
 
 
-class RecursiveTextChunker():
+class RecursiveTextChunker:
 
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -133,7 +135,7 @@ class SentenceWindowChunker:
         return [node.text for node in nodes]
 
 
-class SemanticChunker():
+class SemanticChunker:
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap

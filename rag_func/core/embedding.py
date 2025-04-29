@@ -5,18 +5,20 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from rag_func.config.config import EMBEDDING_MODELS
 from rag_func.config.config import VOYAGE_API_KEY, COHERE_API_KEY
 from langchain_core.embeddings import Embeddings
+from rag_func.config.enums import EmbeddingsTypeEnum, InputTypesEnum
+from rag_func.config.config import ACTIVE_CONFIG
 
 
 def get_embedding_model():
 
-    model_config = EMBEDDING_MODELS["cohere"]
+    model_config = EMBEDDING_MODELS[ACTIVE_CONFIG["embedding"]]
     model_type = model_config["type"]
 
-    if model_type == "huggingface":
+    if model_type == EmbeddingsTypeEnum.HuggingFace.value:
         return HuggingFaceEmbeddings(model_name=model_config["model_name"])
-    elif model_type == "voyageai":
+    elif model_type == EmbeddingsTypeEnum.Voyageai.value:
         return VoyageaiEmbeddings(model_name=model_config["model_name"])
-    elif model_type == "cohere":
+    elif model_type == EmbeddingsTypeEnum.Cohere.value:
         return CohereEmbeddings(model_name=model_config["model_name"])
 
 
@@ -27,11 +29,11 @@ class VoyageaiEmbeddings(Embeddings):
         self.model_name = model_name
 
     def embed_documents(self, texts):
-        result = self.vo.embed(texts, model=self.model_name, input_type="document")
+        result = self.vo.embed(texts, model=self.model_name, input_type=InputTypesEnum.SearchDocument.value)
         return result.embeddings
 
     def embed_query(self, text):
-        result = self.vo.embed([text], model=self.model_name, input_type="query")
+        result = self.vo.embed([text], model=self.model_name, input_type=InputTypesEnum.SearchQuery.value)
         return result.embeddings[0]
 
 
@@ -50,7 +52,7 @@ class CohereEmbeddings:
             res = self.co.embed(
                 texts=batch,
                 model=self.model_name,
-                input_type="search_document",
+                input_type=InputTypesEnum.SearchDocument.value,
                 output_dimension=1024,
                 embedding_types=["float"]
             )
@@ -70,7 +72,7 @@ class CohereEmbeddings:
         res = self.co.embed(
             texts=[text],
             model=self.model_name,
-            input_type="search_query",
+            input_type=InputTypesEnum.SearchQuery.value,
             output_dimension=1024,
             embedding_types=["float"]
         )
@@ -82,7 +84,6 @@ class CohereEmbeddings:
         else:
             embedding = list(res.embeddings)[0]
 
-        # Convert to numpy array and ensure it's the right shape
         embedding_array = np.array(embedding, dtype=np.float32)
 
         return embedding_array

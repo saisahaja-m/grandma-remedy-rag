@@ -31,7 +31,7 @@ DOC_PROCESSING = {
 
 # Embedding model configurations
 EMBEDDING_MODELS = {
-    "default": {
+    "huggingface": {
         "type": "huggingface",
         "model_name": "all-MiniLM-L6-v2"
     },
@@ -47,7 +47,7 @@ EMBEDDING_MODELS = {
 
 # Vector store configurations
 VECTOR_STORES = {
-    "default": {
+    "faiss": {
         "type": "faiss"
     },
     "chroma": {
@@ -61,7 +61,7 @@ VECTOR_STORES = {
 
 # Retrieval configurations
 RETRIEVAL = {
-    "default": {
+    "ensemble": {
         "type": "ensemble",
         "retrievers": ["bm25", "vector"],
         "weights": [0.3, 0.7],
@@ -107,19 +107,20 @@ LLM_MODELS = {
 
 # Evaluation configurations
 EVALUATION = {
-    "default": {
+    "ragas": {
         "type": "ragas",
         "metrics": ["faithfulness", "answer_relevancy", "groundedness", "context_relevance"]
     },
     "trulens":{
         "type": "trulens",
-        "metrics": []
+        "metrics": [],
+        "model_name": "gpt-4.1-mini"
     }
 }
 
 # Reranking configurations
 RERANKING = {
-    "default": {
+    "groq": {
         "type": "groq",
         "model": "llama3-8b-8192",
         "top_k": 5
@@ -137,7 +138,7 @@ RERANKING = {
 }
 
 CHUNKING = {
-    "default": {
+    "manual": {
         "type": "manual",
         "chunk_size": 700,
         "chunk_overlap": 100
@@ -189,11 +190,11 @@ APP_CONFIG = {
 
 # Active configuration - change these to switch components
 ACTIVE_CONFIG = {
-    "embedding": "default",
-    "vector_store": "default",
-    "retrieval": "default",
-    "llm": "default",
-    "evaluation": "default",
-    "reranking": "default",
-    "chunking": "default"
+    "embedding": "huggingface",
+    "vector_store": "faiss",
+    "retrieval": "ensemble",
+    "llm": "gemini",
+    "evaluation": "ragas",
+    "reranking": "groq",
+    "chunking": "semantic"
 }
