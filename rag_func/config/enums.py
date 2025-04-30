@@ -4,6 +4,7 @@ class EmbeddingsTypeEnum(Enum):
     HuggingFace = "huggingface"
     Voyageai = "voyageai"
     Cohere = "cohere"
+    Mistral = "mistral"
 
 
 class InputTypesEnum(Enum):
@@ -52,4 +53,10 @@ class RetrievalTypesEnum(Enum):
     Vector = "vector"
     bm25 = "bm25"
     Ensemble = "ensemble"
+    Semantic = "semantic"
 
+
+class RerankingTypesEnum(Enum):
+    Groq = "groq"
+    Cohere = "cohere"
+    Jina = "jina"

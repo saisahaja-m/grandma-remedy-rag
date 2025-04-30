@@ -1,13 +1,16 @@
 import os
 import json
 import re
+import numpy as np
 from typing import List
 from langchain.schema import Document
-from langchain.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import WebBaseLoader
 from rag_func.config.config import URLS, CHUNKING, ACTIVE_CONFIG
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from rag_func.config.enums import ChunkingTypeEnum, DocProcessingEnum
+from rag_func.core.embedding import get_embedding_model
+from sklearn.cluster import KMeans
 
 
 def get_chunking_strategy():
@@ -85,6 +88,23 @@ def load_and_process_documents() -> List[Document]:
         chunks = chunking_strategy.chunk_text(doc.page_content)
         for chunk in chunks:
             all_docs.append(Document(page_content=chunk, metadata=doc.metadata))
+
+
+    embedding_model = get_embedding_model()
+
+    texts = [doc.page_content for doc in all_docs]
+    embeddings = embedding_model.embed_documents(texts)
+
+    if isinstance(embeddings, list):
+        embeddings = np.array(embeddings)
+
+    embedding_vectors = np.array(embeddings)
+    kmeans = KMeans(n_clusters=24, max_iter=1000, random_state=42)
+    kmeans.fit(embedding_vectors)
+    labels = kmeans.labels_
+
+    for i, doc in enumerate(all_docs):
+        doc.metadata["cluster"] = int(labels[i])
 
     return all_docs
 

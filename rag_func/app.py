@@ -1,16 +1,14 @@
 import streamlit as st
 from dotenv import load_dotenv
-
 from rag_func.core.data_processing import load_and_process_documents
 from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
 from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
 from rag_func.utils.helpers import format_chat_history, format_context_from_docs, create_system_prompt
-from rag_func.config.config import APP_CONFIG
+from rag_func.config.config import APP_CONFIG, user_greetings
 
 load_dotenv()
-
 
 @st.cache_resource
 def initialize_rag_system():
@@ -29,12 +27,17 @@ def initialize_rag_system():
     }
 
 
-def process_user_query(rag_system, user_input):
+def process_query_with_rag(rag_system, user_input):
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
+    print(relevant_docs)
 
-    reranked_docs = rag_system["reranker"].rerank(user_input, relevant_docs)
+    docs = [doc for doc in relevant_docs if doc.page_content.strip()]
+    if not docs:
+        return "I'm sorry, I don't have specific information about that. Is there something else I can help with?", []
 
-    # Prepare context and generate response
+    reranked_docs = rag_system["reranker"].rerank(user_input, docs)
+    print(reranked_docs)
+
     context = format_context_from_docs(reranked_docs)
     chat_history = format_chat_history(st.session_state.messages[:-1])
     prompt = create_system_prompt(user_input, chat_history, context)
@@ -42,13 +45,14 @@ def process_user_query(rag_system, user_input):
 
     return response, reranked_docs
 
+
 def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
     evaluation_result = rag_system["evaluator"].evaluate(
         user_input, response, context_docs
     )
-
     return evaluation_result
+
 
 def display_chat_history():
     for message in st.session_state.messages:
@@ -61,31 +65,43 @@ def main():
     st.title(APP_CONFIG["title"])
 
     rag_system = initialize_rag_system()
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
     display_chat_history()
 
     user_input = st.chat_input("Tell Grandma your problem...")
+
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        response, reranked_docs = process_user_query(rag_system, user_input)
+        if user_input in user_greetings:
+            response = ("Namaste, beta! How wonderful to hear from you. What can Grandma help you with today?"
+                        " I have so many ancient remedies passed down through generations,"
+                        " I'm sure we can find something to soothe your woes!")
+            reranked_docs = []
+        else:
+            response, reranked_docs = process_query_with_rag(rag_system, user_input)
 
         with st.chat_message("assistant"):
             st.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-        with st.spinner("Evaluating response quality..."):
-            evaluation_result = evaluate_response(rag_system=rag_system, reranked_docs=reranked_docs,
-                                                  response=response, user_input=user_input)
-            st.write("Evaluation result:", evaluation_result)
+        if reranked_docs:
+            with st.spinner("Evaluating response quality..."):
+                evaluation_result = evaluate_response(
+                    rag_system=rag_system,
+                    reranked_docs=reranked_docs,
+                    response=response,
+                    user_input=user_input
+                )
+                st.write("Evaluation result:", evaluation_result)
 
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
-
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+from rag_func.config.enums import EmbeddingsTypeEnum, ChunkingTypeEnum, LLMTypesEnum, EvaluatorTypesEnum, EvaluatingMetricsEnum, \
+                    VectorStoresEnum, RetrievalTypesEnum, RerankingTypesEnum
 
 load_dotenv()
 
@@ -9,6 +11,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 # URLs for data sources
 URLS = [
@@ -31,54 +34,58 @@ DOC_PROCESSING = {
 
 # Embedding model configurations
 EMBEDDING_MODELS = {
-    "huggingface": {
-        "type": "huggingface",
+    EmbeddingsTypeEnum.HuggingFace.value: {
+        "type": EmbeddingsTypeEnum.HuggingFace.value,
         "model_name": "all-MiniLM-L6-v2"
     },
-    "voyageai":{
-        "type": "voyageai",
+    EmbeddingsTypeEnum.Voyageai.value: {
+        "type": EmbeddingsTypeEnum.Voyageai.value,
         "model_name": "voyage-3"
     },
-    "cohere":{
-        "type": "cohere",
+    EmbeddingsTypeEnum.Cohere.value: {
+        "type": EmbeddingsTypeEnum.Cohere.value,
         "model_name": "embed-v4.0"
+    },
+    EmbeddingsTypeEnum.Mistral.value:{
+        "type": EmbeddingsTypeEnum.Mistral.value,
+        "model_name": "mistral-embed"
     }
 }
 
 # Vector store configurations
 VECTOR_STORES = {
-    "faiss": {
-        "type": "faiss"
+    VectorStoresEnum.Faiss.value: {
+        "type": VectorStoresEnum.Faiss.value
     },
-    "chroma": {
-        "type": "chroma",
+    VectorStoresEnum.Chroma.value: {
+        "type": VectorStoresEnum.Chroma.value,
         "persist_directory": "./chroma_db"
     },
-    "qdrant":{
-        "type": "qdrant"
+    VectorStoresEnum.Annoy.value: {
+        "type": VectorStoresEnum.Annoy.value
     },
-    "annoy":{
-        "type": "annoy"
+    "qdrant": {  # Not yet in enum
+        "type": "qdrant"
     }
 }
 
 # Retrieval configurations
 RETRIEVAL = {
-    "ensemble": {
-        "type": "ensemble",
+    RetrievalTypesEnum.Ensemble.value: {
+        "type": RetrievalTypesEnum.Ensemble.value,
         "retrievers": ["bm25", "vector"],
         "weights": [0.3, 0.7],
         "k": 5
     },
-    "vector_only": {
-        "type": "vector",
+    RetrievalTypesEnum.Vector.value: {
+        "type": RetrievalTypesEnum.Vector.value,
         "k": 5
     },
-    "bm25_only": {
-        "type": "bm25",
+    RetrievalTypesEnum.bm25.value: {
+        "type": RetrievalTypesEnum.bm25.value,
         "k": 20
     },
-    "semantic":{
+    RetrievalTypesEnum.Semantic.value: {
         "type": "semantic",
         "k": 20
     }
@@ -86,18 +93,18 @@ RETRIEVAL = {
 
 # LLM configurations
 LLM_MODELS = {
-    "gemini": {
-        "type": "gemini",
+    LLMTypesEnum.GeminiLLM.value: {
+        "type": LLMTypesEnum.GeminiLLM.value,
         "model_name": "gemini-2.0-flash-exp",
         "temperature": 0.2
     },
-    "openai": {
-        "type": "openai",
+    LLMTypesEnum.OpenAiLLM.value: {
+        "type": LLMTypesEnum.OpenAiLLM.value,
         "model_name": "gpt-4-turbo",
         "temperature": 0.2
     },
-    "groq": {
-        "type": "groq",
+    LLMTypesEnum.GroqLLM.value: {
+        "type": LLMTypesEnum.GroqLLM.value,
         "model_name": "llama3-8b-8192",
         "temperature": 0.0
     },
@@ -110,12 +117,17 @@ LLM_MODELS = {
 
 # Evaluation configurations
 EVALUATION = {
-    "ragas": {
-        "type": "ragas",
-        "metrics": ["faithfulness", "answer_relevancy", "groundedness", "context_relevance"]
+    EvaluatorTypesEnum.RagasEvaluator.value: {
+        "type": EvaluatorTypesEnum.RagasEvaluator.value,
+        "metrics": [
+            EvaluatingMetricsEnum.Faithfulness.value,
+            EvaluatingMetricsEnum.AnswerRelevancy.value,
+            EvaluatingMetricsEnum.Groundedness.value,
+            EvaluatingMetricsEnum.ContextRelevance.value
+        ]
     },
-    "trulens":{
-        "type": "trulens",
+    EvaluatorTypesEnum.TrulensEvaluator.value: {
+        "type": EvaluatorTypesEnum.TrulensEvaluator.value,
         "metrics": [],
         "model_name": "gpt-4.1-mini"
     }
@@ -123,44 +135,44 @@ EVALUATION = {
 
 # Reranking configurations
 RERANKING = {
-    "groq": {
-        "type": "groq",
+    RerankingTypesEnum.Groq.value: {
+        "type": RerankingTypesEnum.Groq.value,
         "model": "llama3-8b-8192",
         "top_k": 5
     },
-    "cohere":{
-        "type": "cohere",
+    RerankingTypesEnum.Cohere.value: {
+        "type": RerankingTypesEnum.Cohere.value,
         "model": "rerank-v3.5",
         "top_k": 5
     },
-    "jina":{
-        "type": "jina",
+    RerankingTypesEnum.Jina.value: {
+        "type": RerankingTypesEnum.Jina.value,
         "model": "jina-reranker-v2-base-multilingual",
         "top_k": 5
     }
 }
 
 CHUNKING = {
-    "manual": {
-        "type": "manual",
+    ChunkingTypeEnum.Manual.value: {
+        "type": ChunkingTypeEnum.Manual.value,
         "chunk_size": 700,
         "chunk_overlap": 100
     },
-    "sentence_window": {
-        "type": "sentence_window",
+    ChunkingTypeEnum.SentenceWindow.value: {
+        "type": ChunkingTypeEnum.SentenceWindow.value,
         "max_window_size": 5,
         "stride": 2
     },
-    "recursive": {
-        "type": "recursive",
+    ChunkingTypeEnum.Recursive.value: {
+        "type": ChunkingTypeEnum.Recursive.value,
         "chunk_size": 1000,
         "chunk_overlap": 200
     },
     "markdown": {
         "type": "markdown"
     },
-    "semantic": {
-        "type": "semantic",
+    ChunkingTypeEnum.Semantic.value: {
+        "type": ChunkingTypeEnum.Semantic.value,
         "chunk_size": 1000,
         "chunk_overlap": 200
     }
@@ -191,13 +203,20 @@ APP_CONFIG = {
     """
 }
 
-# Active configuration - change these to switch components
+# Active configuration using enums
 ACTIVE_CONFIG = {
-    "embedding": "huggingface",
-    "vector_store": "faiss",
-    "retrieval": "ensemble",
-    "llm": "gemini",
-    "evaluation": "ragas",
-    "reranking": "groq",
-    "chunking": "semantic"
+    "embedding": EmbeddingsTypeEnum.HuggingFace.value,
+    "vector_store": VectorStoresEnum.Faiss.value,
+    "retrieval": RetrievalTypesEnum.Ensemble.value,
+    "llm": LLMTypesEnum.GeminiLLM.value,
+    "evaluation": EvaluatorTypesEnum.RagasEvaluator.value,
+    "reranking": RerankingTypesEnum.Groq.value,
+    "chunking": ChunkingTypeEnum.Semantic.value
 }
+
+user_greetings = [
+    "Hi", "Hello", "Hey", "Hi there", "Good morning", "Good afternoon", "Good evening",
+    "Hey Grandma", "Hello Grandma", "Hi Grandma", "Hey there", "Yo", "What's up?",
+    "Hi, I need help", "Hello, can you help me?", "Hi, I’m not feeling well",
+    "Good day", "Is anyone there?", "Hi, I have a question", "Hello, I need a remedy"
+]

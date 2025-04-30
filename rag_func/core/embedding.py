@@ -1,17 +1,16 @@
 import cohere
 import numpy as np
 import voyageai
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from rag_func.config.config import EMBEDDING_MODELS
-from rag_func.config.config import VOYAGE_API_KEY, COHERE_API_KEY
+from rag_func.config.config import VOYAGE_API_KEY, COHERE_API_KEY, MISTRAL_API_KEY
 from langchain_core.embeddings import Embeddings
 from rag_func.config.enums import EmbeddingsTypeEnum, InputTypesEnum
-from rag_func.config.config import ACTIVE_CONFIG
-
+from mistralai import Mistral
 
 def get_embedding_model():
 
-    model_config = EMBEDDING_MODELS[ACTIVE_CONFIG["embedding"]]
+    model_config = EMBEDDING_MODELS["mistral"]
     model_type = model_config["type"]
 
     if model_type == EmbeddingsTypeEnum.HuggingFace.value:
@@ -20,6 +19,8 @@ def get_embedding_model():
         return VoyageaiEmbeddings(model_name=model_config["model_name"])
     elif model_type == EmbeddingsTypeEnum.Cohere.value:
         return CohereEmbeddings(model_name=model_config["model_name"])
+    elif model_type == EmbeddingsTypeEnum.Mistral.value:
+        return MistralEmbeddings(model_name=model_config["model_name"])
 
 
 class VoyageaiEmbeddings(Embeddings):
@@ -90,3 +91,26 @@ class CohereEmbeddings:
 
     def __call__(self, text):
         return self.embed_query(text)
+
+
+class MistralEmbeddings:
+    def __init__(self, model_name):
+        api_key = MISTRAL_API_KEY
+        self.model = model_name
+        self.client = Mistral(api_key=api_key)
+
+    def embed_documents(self, documents):
+
+        embeddings_batch_response = self.client.embeddings.create(
+            model=self.model,
+            inputs=documents,
+        )
+
+        return [e.embedding for e in embeddings_batch_response.data]
+
+    def embed_query(self, text):
+        response = self.client.embeddings.create(
+            model=self.model,
+            inputs=[text],
+        )
+        return response.data[0].embedding
