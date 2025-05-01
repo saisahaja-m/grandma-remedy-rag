@@ -4,9 +4,9 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from rag_func.core.embedding import get_embedding_model
-from rag_func.config.config import RETRIEVAL, VECTOR_STORES, ACTIVE_CONFIG
+from rag_func.constants.config import RETRIEVAL, VECTOR_STORES, ACTIVE_CONFIG
 from typing import Dict, List, Tuple
-from rag_func.config.enums import VectorStoresEnum, RetrievalTypesEnum
+from rag_func.constants.enums import VectorStoresEnum, RetrievalTypesEnum
 from langchain_community.vectorstores import Annoy
 
 

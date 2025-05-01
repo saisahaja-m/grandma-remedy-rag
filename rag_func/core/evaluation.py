@@ -1,9 +1,9 @@
 from ragas.metrics import faithfulness, answer_relevancy, ResponseGroundedness, ContextRelevance
 from ragas import evaluate
 from datasets import Dataset
-from rag_func.config.config import EVALUATION, ACTIVE_CONFIG
+from rag_func.constants.config import EVALUATION, ACTIVE_CONFIG
 from trulens.providers.openai import OpenAI
-from rag_func.config.enums import EvaluatorTypesEnum, EvaluatingMetricsEnum
+from rag_func.constants.enums import EvaluatorTypesEnum, EvaluatingMetricsEnum
 
 
 def get_evaluator():

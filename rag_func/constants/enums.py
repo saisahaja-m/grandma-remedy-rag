@@ -27,7 +27,7 @@ class DocProcessingEnum(Enum):
 class LLMTypesEnum(Enum):
     GeminiLLM = "gemini"
     OpenAiLLM = "openai"
-    GroqLLM = "groq"
+    ClaudeLLM = "claude"
 
 
 class EvaluatorTypesEnum(Enum):

@@ -5,10 +5,10 @@ import numpy as np
 from typing import List
 from langchain.schema import Document
 from langchain_community.document_loaders import WebBaseLoader
-from rag_func.config.config import URLS, CHUNKING, ACTIVE_CONFIG
+from rag_func.constants.config import URLS, CHUNKING, ACTIVE_CONFIG
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
-from rag_func.config.enums import ChunkingTypeEnum, DocProcessingEnum
+from rag_func.constants.enums import ChunkingTypeEnum, DocProcessingEnum
 from rag_func.core.embedding import get_embedding_model
 from sklearn.cluster import KMeans
 

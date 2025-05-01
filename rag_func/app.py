@@ -6,7 +6,7 @@ from rag_func.core.generation import get_llm_model
 from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
 from rag_func.utils.helpers import format_chat_history, format_context_from_docs, create_system_prompt
-from rag_func.config.config import APP_CONFIG, user_greetings
+from rag_func.constants.config import APP_CONFIG, user_greetings
 
 load_dotenv()
 
@@ -29,14 +29,11 @@ def initialize_rag_system():
 
 def process_query_with_rag(rag_system, user_input):
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
-    print(relevant_docs)
-
     docs = [doc for doc in relevant_docs if doc.page_content.strip()]
     if not docs:
         return "I'm sorry, I don't have specific information about that. Is there something else I can help with?", []
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
-    print(reranked_docs)
 
     context = format_context_from_docs(reranked_docs)
     chat_history = format_chat_history(st.session_state.messages[:-1])

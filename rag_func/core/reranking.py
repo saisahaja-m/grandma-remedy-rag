@@ -2,9 +2,9 @@ import requests
 import cohere
 import re
 from langchain.schema import Document
-from rag_func.config.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY
+from rag_func.constants.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY
 from typing import List, Dict
-from rag_func.config.enums import RerankingTypesEnum
+from rag_func.constants.enums import RerankingTypesEnum
 
 
 def get_reranker():

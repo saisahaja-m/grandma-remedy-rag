@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from rag_func.config.enums import EmbeddingsTypeEnum, ChunkingTypeEnum, LLMTypesEnum, EvaluatorTypesEnum, EvaluatingMetricsEnum, \
+from rag_func.constants.enums import EmbeddingsTypeEnum, ChunkingTypeEnum, LLMTypesEnum, EvaluatorTypesEnum, EvaluatingMetricsEnum, \
                     VectorStoresEnum, RetrievalTypesEnum, RerankingTypesEnum
 
 load_dotenv()
@@ -12,6 +12,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 
 # URLs for data sources
 URLS = [
@@ -63,9 +64,6 @@ VECTOR_STORES = {
     },
     VectorStoresEnum.Annoy.value: {
         "type": VectorStoresEnum.Annoy.value
-    },
-    "qdrant": {  # Not yet in enum
-        "type": "qdrant"
     }
 }
 
@@ -103,37 +101,13 @@ LLM_MODELS = {
         "model_name": "gpt-4-turbo",
         "temperature": 0.2
     },
-    LLMTypesEnum.GroqLLM.value: {
-        "type": LLMTypesEnum.GroqLLM.value,
-        "model_name": "llama3-8b-8192",
-        "temperature": 0.0
-    },
-    "huggingface": {
-        "type": "huggingface",
-        "model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    LLMTypesEnum.ClaudeLLM.value:{
+        "type": LLMTypesEnum.ClaudeLLM.value,
+        "model_name": "claude-3-5-sonnet-20240620",
         "temperature": 0.2
     }
 }
 
-# Evaluation configurations
-EVALUATION = {
-    EvaluatorTypesEnum.RagasEvaluator.value: {
-        "type": EvaluatorTypesEnum.RagasEvaluator.value,
-        "metrics": [
-            EvaluatingMetricsEnum.Faithfulness.value,
-            EvaluatingMetricsEnum.AnswerRelevancy.value,
-            EvaluatingMetricsEnum.Groundedness.value,
-            EvaluatingMetricsEnum.ContextRelevance.value
-        ]
-    },
-    EvaluatorTypesEnum.TrulensEvaluator.value: {
-        "type": EvaluatorTypesEnum.TrulensEvaluator.value,
-        "metrics": [],
-        "model_name": "gpt-4.1-mini"
-    }
-}
-
-# Reranking configurations
 RERANKING = {
     RerankingTypesEnum.Groq.value: {
         "type": RerankingTypesEnum.Groq.value,
@@ -178,6 +152,23 @@ CHUNKING = {
     }
 }
 
+EVALUATION = {
+    EvaluatorTypesEnum.RagasEvaluator.value: {
+        "type": EvaluatorTypesEnum.RagasEvaluator.value,
+        "metrics": [
+            EvaluatingMetricsEnum.Faithfulness.value,
+            EvaluatingMetricsEnum.AnswerRelevancy.value,
+            EvaluatingMetricsEnum.Groundedness.value,
+            EvaluatingMetricsEnum.ContextRelevance.value
+        ]
+    },
+    EvaluatorTypesEnum.TrulensEvaluator.value: {
+        "type": EvaluatorTypesEnum.TrulensEvaluator.value,
+        "metrics": [],
+        "model_name": "gpt-4.1-mini"
+    }
+}
+
 # App configuration
 APP_CONFIG = {
     "title": "🌿 Grandma's Remedy RAG",
@@ -194,12 +185,12 @@ APP_CONFIG = {
     {context}
 
     INSTRUCTIONS:
-        1. Only answer to the questions related to health and body
-        2. Be warm and loving, use terms like beta or baccha, but never make things up.
-        3. Use reliable sources, like books or websites, when mentioning remedies.
-        4. Always back up your advice with references when possible.
-        5. Don't make exaggerated claims—let the remedies speak for themselves.
-        6. Provide references when you mention them, but in a friendly manner.
+        1. Answer **only** questions related to health, wellness, or the human body.
+        2. **Do not** respond to irrelevant or unrelated queries that fall outside the scope of health or this RAG.
+        3. Always be warm, loving, and nurturing—use affectionate terms like *beta* or *baccha* when appropriate.
+        4. Never make up remedies. Your advice should be based on trustworthy sources such as Ayurvedic books, recognized wellness websites, or traditionally known practices.
+        5. Back up your advice with friendly references when possible, e.g., "This is mentioned in the Charaka Samhita, beta."
+        6. Avoid making exaggerated claims—let the natural power of the remedies speak for themselves.
     """
 }
 

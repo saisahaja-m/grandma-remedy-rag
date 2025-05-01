@@ -2,15 +2,15 @@ import cohere
 import numpy as np
 import voyageai
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-from rag_func.config.config import EMBEDDING_MODELS
-from rag_func.config.config import VOYAGE_API_KEY, COHERE_API_KEY, MISTRAL_API_KEY
+from rag_func.constants.config import EMBEDDING_MODELS, ACTIVE_CONFIG
+from rag_func.constants.config import VOYAGE_API_KEY, COHERE_API_KEY, MISTRAL_API_KEY
 from langchain_core.embeddings import Embeddings
-from rag_func.config.enums import EmbeddingsTypeEnum, InputTypesEnum
+from rag_func.constants.enums import EmbeddingsTypeEnum, InputTypesEnum
 from mistralai import Mistral
 
 def get_embedding_model():
 
-    model_config = EMBEDDING_MODELS["mistral"]
+    model_config = EMBEDDING_MODELS[ACTIVE_CONFIG['embedding']]
     model_type = model_config["type"]
 
     if model_type == EmbeddingsTypeEnum.HuggingFace.value:
@@ -93,7 +93,7 @@ class CohereEmbeddings:
         return self.embed_query(text)
 
 
-class MistralEmbeddings:
+class MistralEmbeddings(Embeddings):
     def __init__(self, model_name):
         api_key = MISTRAL_API_KEY
         self.model = model_name
