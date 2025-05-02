@@ -1,7 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
 import pandas as pd
-
 from rag_func.core.data_processing import load_and_process_documents
 from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
@@ -123,7 +122,17 @@ def main():
                     response=response,
                     user_input=user_input
                 )
-                st.write("Evaluation result:", evaluation_result)
+                scores = evaluation_result.scores[0]  # Assuming single evaluation result
+
+                st.subheader("Evaluation Metrics")
+                st.write(
+                    {
+                        "Faithfulness": round(scores["faithfulness"], 3),
+                        "Answer Relevancy": round(scores["answer_relevancy"], 3),
+                        "Response Groundedness": round(scores["nv_response_groundedness"], 3),
+                        "Context Relevance": round(scores["nv_context_relevance"], 3),
+                    }
+                )
 
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
 
