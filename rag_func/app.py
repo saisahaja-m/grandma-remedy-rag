@@ -1,5 +1,7 @@
 import streamlit as st
 from dotenv import load_dotenv
+import pandas as pd
+
 from rag_func.core.data_processing import load_and_process_documents
 from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
@@ -9,6 +11,17 @@ from rag_func.utils.helpers import format_chat_history, format_context_from_docs
 from rag_func.constants.config import APP_CONFIG, user_greetings
 
 load_dotenv()
+
+def get_ground_truth_for_question(question: str, filepath: str = "ground_truths.csv") -> str:
+    try:
+        df = pd.read_csv(filepath)
+        match = df[df['question'].str.strip().str.lower() == question.strip().lower()]
+        if not match.empty:
+            return match.iloc[0]['answer']
+        else:
+            return "Ground truth not found for this question."
+    except Exception as e:
+        return f"Error retrieving ground truth: {e}"
 
 @st.cache_resource
 def initialize_rag_system():
@@ -26,17 +39,24 @@ def initialize_rag_system():
         "evaluator": evaluator
     }
 
-
-def process_query_with_rag(rag_system, user_input):
+def process_query_with_rag(rag_system, user_input, chat_history=None):
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
     docs = [doc for doc in relevant_docs if doc.page_content.strip()]
     if not docs:
         return "I'm sorry, I don't have specific information about that. Is there something else I can help with?", []
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
-
     context = format_context_from_docs(reranked_docs)
-    chat_history = format_chat_history(st.session_state.messages[:-1])
+
+    if chat_history is None:
+        try:
+            if hasattr(st, 'session_state') and hasattr(st.session_state, 'messages'):
+                chat_history = format_chat_history(st.session_state.messages[:-1])
+            else:
+                chat_history = ""
+        except:
+            chat_history = ""
+
     prompt = create_system_prompt(user_input, chat_history, context)
     response = rag_system["llm"].generate_response(prompt)
 
@@ -45,8 +65,13 @@ def process_query_with_rag(rag_system, user_input):
 
 def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
+    ground_truth = get_ground_truth_for_question(user_input)
+
+    if "Ground truth not found" in ground_truth:
+        return {"note": "Ground truth not found; evaluation skipped."}
+
     evaluation_result = rag_system["evaluator"].evaluate(
-        user_input, response, context_docs
+        user_input, response, context_docs, [ground_truth]
     )
     return evaluation_result
 
@@ -76,9 +101,11 @@ def main():
             st.markdown(user_input)
 
         if user_input in user_greetings:
-            response = ("Namaste, beta! How wonderful to hear from you. What can Grandma help you with today?"
-                        " I have so many ancient remedies passed down through generations,"
-                        " I'm sure we can find something to soothe your woes!")
+            response = (
+                "Namaste, beta! How wonderful to hear from you. What can Grandma help you with today? "
+                "I have so many ancient remedies passed down through generations, "
+                "I'm sure we can find something to soothe your woes!"
+            )
             reranked_docs = []
         else:
             response, reranked_docs = process_query_with_rag(rag_system, user_input)

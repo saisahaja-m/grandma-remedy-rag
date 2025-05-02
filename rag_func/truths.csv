@@ -1,0 +1,28 @@
+data = [
+    {
+        "question": "What are some foods that help with digestion?",
+        "answer": "Foods like whole grains, dark green vegetables, yogurt, chia seeds, ginger, apples, fennel, sauerkraut, kefir, kombucha, salmon, papaya, beets, miso, kimchi, tempeh, natto, bone broth, and peppermint can aid digestion.",
+        "source": "https://www.verywellhealth.com/foods-that-help-digestion-8697713"
+    },
+    {
+        "question": "What are some home remedies for toothache?",
+        "answer": "Remedies include saltwater rinses, hydrogen peroxide rinses, cold compresses, peppermint tea bags, garlic, vanilla extract, clove, guava leaves, wheatgrass, thyme, and the toothache plant.",
+        "source": "https://www.healthline.com/health/dental-and-oral-health/home-remedies-for-toothache"
+    },
+    {
+        "question": "How can I improve my sleep naturally?",
+        "answer": "Natural methods include drinking warm milk, chamomile tea, or tart cherry juice; exercising regularly (but not close to bedtime); using melatonin supplements; and keeping your bedroom cool.",
+        "source": "https://www.hopkinsmedicine.org/health/wellness-and-prevention/natural-sleep-aids-home-remedies-to-help-you-sleep"
+    },
+    {
+        "question": "What are some home remedies for hair fall?",
+        "answer": "Applying coconut oil, using onion juice, massaging with aloe vera, and incorporating a balanced diet rich in proteins and vitamins can help reduce hair fall.",
+        "source": "https://www.stylecraze.com/articles/home-remedies-for-hair-fall/"
+    },
+    {
+        "question": "What foods can help reduce bloating?",
+        "answer": "Bananas, quinoa, ginger, fennel, fermented foods like sauerkraut, asparagus, salmon, and even Rice Krispies Squares can help alleviate bloating.",
+        "source": "https://www.thetimes.co.uk/article/what-eat-stop-bloating-foods-rice-krispies-ffc7kk2qj"
+    }
+]
+
