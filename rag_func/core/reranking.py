@@ -1,8 +1,9 @@
+import json
 import requests
 import cohere
 import re
 from langchain.schema import Document
-from rag_func.constants.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY
+from rag_func.constants.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY, JINA_API_KEY
 from typing import List, Dict
 from rag_func.constants.enums import RerankingTypesEnum
 
@@ -108,24 +109,35 @@ class JinaReranker:
         self.top_k = top_k
 
     def rerank(self, query, documents):
+
         formatted_docs = [{"text": doc.page_content} for doc in documents]
 
         url = 'https://api.jina.ai/v1/rerank'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer jina_85bf0e24ca9646a7860a7095e4771a69x0FCKbVTF9JRNEb_bT88iQF4xiou'
+            'Authorization': JINA_API_KEY
         }
         data = {
             "model": self.model,
             "query": query,
             "top_n": self.top_k,
             "documents": formatted_docs,
-            "return_documents": False
+            "return_documents": True  # Set to True to get documents back
         }
 
         response = requests.post(url, headers=headers, data=json.dumps(data))
         response_data = response.json()
 
-        reranked_documents = response_data.get("reranked_documents", [])
+        reranked_docs = []
+        if 'results' in response_data:
+            sorted_results = sorted(response_data['results'], key=lambda x: x['index'])
 
-        return reranked_documents
+            for result in sorted_results:
+                idx = result['index']
+                if 0 <= idx < len(documents):
+                    doc = documents[idx]
+                    if hasattr(doc, 'metadata'):
+                        doc.metadata['relevance_score'] = result['relevance_score']
+                    reranked_docs.append(doc)
+
+        return reranked_docs

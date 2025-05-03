@@ -145,12 +145,11 @@ class SentenceWindowChunker:
 
     def __init__(self, window_size: int = 2, window_overlap: int = 1):
         self.parser = SentenceWindowNodeParser.from_defaults(
-            window_size=window_size,
-            window_overlap=window_overlap
+            window_size=window_size
         )
 
     def chunk_text(self, text: str) -> List[str]:
-        document = Document(text=text)
+        document = Document(text=text, page_content="")
         nodes = self.parser.get_nodes_from_documents([document])
         return [node.text for node in nodes]
 

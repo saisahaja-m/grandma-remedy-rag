@@ -1,5 +1,5 @@
 import uuid
-import chromadb
+from langchain.vectorstores import Chroma
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
@@ -19,7 +19,7 @@ def create_vector_store(docs):
         return FAISS.from_documents(docs, embedding_model)
 
     elif vector_store_type == VectorStoresEnum.Chroma.value:
-        return ChromaVectorStore(docs, embedding_model)
+        return Chroma.from_documents(docs, embedding_model)
     elif vector_store_type == VectorStoresEnum.Annoy.value:
         return AnnoyVectorStore(docs, embeddings=embedding_model)
 
@@ -52,44 +52,44 @@ def get_retriever(docs):
         )
 
 
-class ChromaVectorStore:
-    def __init__(self, documents, embeddings):
-        self._client = chromadb.Client()
-        self._collection_name = "collection_" + uuid.uuid4().hex[:8]
-        self._collection = self._client.create_collection(name=self._collection_name)
-        self._id_to_doc: Dict[str, str] = {}
-        self.documents = documents
-        self.embeddings = embeddings
-
-    def add_documents(self) -> None:
-        if not self.documents or not self.embeddings:
-            return
-
-        ids = ["doc_" + str(i) for i in range(len(self.documents))]
-        self._id_to_doc.update({doc_id: doc for doc_id, doc in zip(ids, self.documents)})
-
-        self._collection.add(
-            embeddings=self.embeddings,
-            documents=self.documents,
-            ids=ids
-        )
-
-    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float]]:
-        if not self._id_to_doc:
-            return []
-
-        available_docs = len(self._id_to_doc)
-        limit = min(max(1, top_k), available_docs)
-
-        results = self._collection.query(
-            query_embeddings=[query_embedding],
-            n_results=limit
-        )
-
-        documents = results.get('documents', [[]])[0]
-        distances = results.get('distances', [[]])[0]
-
-        return [(doc, float(dist)) for doc, dist in zip(documents, distances)]
+# class ChromaVectorStore:
+#     def __init__(self, documents, embeddings):
+#         self._client = Chroma.Client()
+#         self._collection_name = "collection_" + uuid.uuid4().hex[:8]
+#         self._collection = self._client.create_collection(name=self._collection_name)
+#         self._id_to_doc: Dict[str, str] = {}
+#         self.documents = documents
+#         self.embeddings = embeddings
+#
+#     def add_documents(self) -> None:
+#         if not self.documents or not self.embeddings:
+#             return
+#
+#         ids = ["doc_" + str(i) for i in range(len(self.documents))]
+#         self._id_to_doc.update({doc_id: doc for doc_id, doc in zip(ids, self.documents)})
+#
+#         self._collection.add(
+#             embeddings=self.embeddings,
+#             documents=self.documents,
+#             ids=ids
+#         )
+#
+#     def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float]]:
+#         if not self._id_to_doc:
+#             return []
+#
+#         available_docs = len(self._id_to_doc)
+#         limit = min(max(1, top_k), available_docs)
+#
+#         results = self._collection.query(
+#             query_embeddings=[query_embedding],
+#             n_results=limit
+#         )
+#
+#         documents = results.get('documents', [[]])[0]
+#         distances = results.get('distances', [[]])[0]
+#
+#         return [(doc, float(dist)) for doc, dist in zip(documents, distances)]
 
 
 # class QdrantVectorStore:

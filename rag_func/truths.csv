@@ -1,28 +1,21 @@
-data = [
-    {
-        "question": "What are some foods that help with digestion?",
-        "answer": "Foods like whole grains, dark green vegetables, yogurt, chia seeds, ginger, apples, fennel, sauerkraut, kefir, kombucha, salmon, papaya, beets, miso, kimchi, tempeh, natto, bone broth, and peppermint can aid digestion.",
-        "source": "https://www.verywellhealth.com/foods-that-help-digestion-8697713"
-    },
-    {
-        "question": "What are some home remedies for toothache?",
-        "answer": "Remedies include saltwater rinses, hydrogen peroxide rinses, cold compresses, peppermint tea bags, garlic, vanilla extract, clove, guava leaves, wheatgrass, thyme, and the toothache plant.",
-        "source": "https://www.healthline.com/health/dental-and-oral-health/home-remedies-for-toothache"
-    },
-    {
-        "question": "How can I improve my sleep naturally?",
-        "answer": "Natural methods include drinking warm milk, chamomile tea, or tart cherry juice; exercising regularly (but not close to bedtime); using melatonin supplements; and keeping your bedroom cool.",
-        "source": "https://www.hopkinsmedicine.org/health/wellness-and-prevention/natural-sleep-aids-home-remedies-to-help-you-sleep"
-    },
-    {
-        "question": "What are some home remedies for hair fall?",
-        "answer": "Applying coconut oil, using onion juice, massaging with aloe vera, and incorporating a balanced diet rich in proteins and vitamins can help reduce hair fall.",
-        "source": "https://www.stylecraze.com/articles/home-remedies-for-hair-fall/"
-    },
-    {
-        "question": "What foods can help reduce bloating?",
-        "answer": "Bananas, quinoa, ginger, fennel, fermented foods like sauerkraut, asparagus, salmon, and even Rice Krispies Squares can help alleviate bloating.",
-        "source": "https://www.thetimes.co.uk/article/what-eat-stop-bloating-foods-rice-krispies-ffc7kk2qj"
-    }
-]
-
+question,answer
+"What is a good remedy for headache?","For headaches, a simple remedy is to apply a paste of ground ginger mixed with water on the forehead. You can also drink a tea made from tulsi (holy basil) leaves with honey, or massage your temples with a few drops of diluted lavender essential oil."
+"How can I treat a sore throat naturally?","For a sore throat, try gargling with warm salt water several times a day. You can also prepare a turmeric milk by mixing 1 teaspoon of turmeric powder in warm milk with a little honey. Ginger tea with honey and lemon is also very effective for soothing irritated throats."
+"What helps with indigestion?","For indigestion, try drinking jeera (cumin) water by boiling 1 teaspoon of cumin seeds in water. Ajwain (carom seeds) chewed with a pinch of salt also provides quick relief. Drinking a glass of warm water with a teaspoon of apple cider vinegar before meals can also help improve digestion."
+"How do I reduce fever naturally?","To reduce fever naturally, try a lukewarm water bath with 2-3 tablespoons of apple cider vinegar added to it. Drinking tulsi (holy basil) tea with honey can also help. You can also apply a cloth soaked in cold water on the forehead and replace it every few minutes."
+"What is good for arthritis pain?","For arthritis pain, try applying warm sesame oil mixed with a pinch of turmeric powder on the affected joints. You can also prepare a paste of ginger powder mixed with water and apply it on painful areas. Drinking turmeric milk daily (haldi doodh) is also beneficial for long-term relief."
+"What is a natural remedy for cold and cough?","A natural remedy for cold and cough is drinking warm water with honey and lemon throughout the day. You can also inhale steam with a few drops of eucalyptus oil or boil tulsi leaves with ginger and black pepper for a soothing herbal tea."
+"How can I get rid of acne naturally?","For acne, apply a paste of neem leaves or turmeric with sandalwood powder on the affected areas. You can also dab diluted tea tree oil on pimples or wash your face with rose water and multani mitti (fuller's earth) regularly."
+"What helps relieve constipation?","To relieve constipation, drink warm water with lemon juice first thing in the morning. Eating soaked raisins or figs overnight helps, and including more fiber-rich foods like papaya and flaxseeds in your diet can support regular bowel movements."
+"What is a natural remedy for hair fall?","To reduce hair fall, massage your scalp with warm coconut oil mixed with a few drops of rosemary or castor oil. A paste made from amla (Indian gooseberry) powder and water can be applied to the scalp weekly. Also, rinse your hair with green tea after shampooing."
+"How to treat dark circles under the eyes naturally?","For dark circles, apply chilled cucumber slices or potato juice to your eyes for 10-15 minutes. You can also apply almond oil or aloe vera gel gently around your eyes before sleeping. Ensure you get enough sleep and stay hydrated daily."
+"What is a natural remedy for mouth ulcers?","For mouth ulcers, apply honey or coconut oil directly on the affected area. You can also rinse your mouth with a solution of warm water and a pinch of turmeric or use a decoction of licorice root (mulethi)."
+"How can I naturally treat cracked heels?","To treat cracked heels, soak your feet in warm water with salt and lemon juice, then scrub gently. Apply a thick layer of ghee or coconut oil and wear cotton socks overnight. A paste of ripe banana can also help moisturize and heal the skin."
+"What helps with bloating?","To relieve bloating, chew on a small piece of fresh ginger or sip fennel seed tea after meals. You can also lightly roast ajwain (carom seeds) and chew them with a pinch of black salt for quick relief."
+"How can I increase appetite naturally?","To increase appetite, drink jeera (cumin) water 30 minutes before meals. Eating small pieces of ginger with lemon juice and black salt before meals also helps stimulate hunger. Fresh mint chutney can also enhance appetite."
+"What is a good remedy for dry cough?","For dry cough, roast cloves and chew them with a pinch of rock salt. You can also drink warm milk with a pinch of turmeric and black pepper. A mix of honey and tulsi juice can help soothe the throat and reduce coughing."
+"How can I naturally treat bad breath?","To treat bad breath, chew fresh mint leaves or fennel seeds after meals. Rinsing with warm water mixed with a few drops of clove oil or using a neem decoction also helps maintain oral hygiene and freshness."
+"What helps with leg cramps?","For leg cramps, drink warm water with a pinch of salt and lemon juice to replenish electrolytes. Massaging the area with sesame oil and doing light stretching can ease the pain. Consuming bananas or magnesium-rich foods also helps prevent cramps."
+"How to treat oily skin naturally?","To manage oily skin, apply a face pack of multani mitti (fuller's earth) and rose water twice a week. Washing your face with diluted lemon juice or aloe vera gel helps reduce oiliness and clear pores."
+"What is a natural way to get glowing skin?","For glowing skin, drink warm water with honey and lemon every morning. Apply a mixture of gram flour (besan), turmeric, and milk as a face pack weekly. Eating fruits like pomegranate and papaya also promotes skin health."
+"How can I soothe itchy skin naturally?","To soothe itchy skin, apply a paste of sandalwood powder mixed with rose water. Oatmeal baths and aloe vera gel are also effective. Neem leaves boiled in water and used as a rinse can reduce skin irritation and infection."

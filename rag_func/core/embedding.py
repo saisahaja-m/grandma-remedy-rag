@@ -1,4 +1,4 @@
-import cohere
+from langchain_cohere import CohereEmbeddings
 import numpy as np
 import voyageai
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
@@ -7,6 +7,7 @@ from rag_func.constants.config import VOYAGE_API_KEY, COHERE_API_KEY, MISTRAL_AP
 from langchain_core.embeddings import Embeddings
 from rag_func.constants.enums import EmbeddingsTypeEnum, InputTypesEnum
 from mistralai import Mistral
+from typing import List
 
 def get_embedding_model():
 
@@ -18,7 +19,7 @@ def get_embedding_model():
     elif model_type == EmbeddingsTypeEnum.Voyageai.value:
         return VoyageaiEmbeddings(model_name=model_config["model_name"])
     elif model_type == EmbeddingsTypeEnum.Cohere.value:
-        return CohereEmbeddings(model_name=model_config["model_name"])
+        return CohereEmbedding(model_name=model_config["model_name"])
     elif model_type == EmbeddingsTypeEnum.Mistral.value:
         return MistralEmbeddings(model_name=model_config["model_name"])
 
@@ -30,85 +31,63 @@ class VoyageaiEmbeddings(Embeddings):
         self.model_name = model_name
 
     def embed_documents(self, texts):
-        result = self.vo.embed(texts, model=self.model_name, input_type=InputTypesEnum.SearchDocument.value)
+        result = self.vo.embed(texts, model=self.model_name, input_type="document")
         return result.embeddings
 
     def embed_query(self, text):
-        result = self.vo.embed([text], model=self.model_name, input_type=InputTypesEnum.SearchQuery.value)
+        result = self.vo.embed([text], model=self.model_name, input_type="query")
         return result.embeddings[0]
 
 
-class CohereEmbeddings:
+class CohereEmbedding(Embeddings):
     def __init__(self, model_name):
         api_key = COHERE_API_KEY
-        self.co = cohere.ClientV2(api_key=api_key)
         self.model_name = model_name
+        self._model = CohereEmbeddings(model=model_name, cohere_api_key=api_key)
 
-    def embed_documents(self, texts):
-        batch_size = 96
-        embeddings = []
+    def embed_query(self, query: str) -> List[float]:
+        return self._model.embed_query(query)
 
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            res = self.co.embed(
-                texts=batch,
-                model=self.model_name,
-                input_type=InputTypesEnum.SearchDocument.value,
-                output_dimension=1024,
-                embedding_types=["float"]
-            )
+    def embed_documents(self, documents: List[str]) -> List[List[float]]:
+        return self._model.embed_documents(documents)
 
-            if hasattr(res.embeddings, 'float'):
-                batch_embeddings = res.embeddings.float
-            elif hasattr(res, 'float_embeddings'):
-                batch_embeddings = res.float_embeddings
-            else:
-                batch_embeddings = list(res.embeddings)
 
-            embeddings.extend(batch_embeddings)
-
-        return embeddings
-
-    def embed_query(self, text):
-        res = self.co.embed(
-            texts=[text],
-            model=self.model_name,
-            input_type=InputTypesEnum.SearchQuery.value,
-            output_dimension=1024,
-            embedding_types=["float"]
-        )
-
-        if hasattr(res.embeddings, 'float'):
-            embedding = res.embeddings.float[0]
-        elif hasattr(res, 'float_embeddings'):
-            embedding = res.float_embeddings[0]
-        else:
-            embedding = list(res.embeddings)[0]
-
-        embedding_array = np.array(embedding, dtype=np.float32)
-
-        return embedding_array
-
-    def __call__(self, text):
-        return self.embed_query(text)
-
+import time
 
 class MistralEmbeddings(Embeddings):
     def __init__(self, model_name):
         api_key = MISTRAL_API_KEY
         self.model = model_name
         self.client = Mistral(api_key=api_key)
+        self.sleep_seconds = 2
+        self.batch_size = 20
 
     def embed_documents(self, documents):
+        all_embeddings = []
 
-        embeddings_batch_response = self.client.embeddings.create(
-            model=self.model,
-            inputs=documents,
-        )
+        for i in range(0, len(documents), self.batch_size):
+            if i > 0:
+                time.sleep(self.sleep_seconds)
 
-        return [e.embedding for e in embeddings_batch_response.data]
+            batch = documents[i:i + self.batch_size]
+
+            try:
+                response = self.client.embeddings.create(
+                    model=self.model,
+                    inputs=batch
+                )
+
+                batch_embeddings = [data.embedding for data in response.data]
+                all_embeddings.extend(batch_embeddings)
+
+            except Exception as e:
+                print(f"Error embedding batch {i // self.batch_size + 1}: {e}")
+                raise
+
+        return all_embeddings
 
     def embed_query(self, text):
+        time.sleep(self.sleep_seconds)
         response = self.client.embeddings.create(
             model=self.model,
             inputs=[text],

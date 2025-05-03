@@ -13,18 +13,20 @@ COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
+JINA_API_KEY = os.getenv("JINA_API_KEY")
 
 # URLs for data sources
 URLS = [
-    "https://www.healthline.com/nutrition/12-foods-that-help-digestion",
-    "https://www.lybrate.com/topic/home-remedies-for-digestion",
-    "https://www.stylecraze.com/articles/home-remedies-for-hair-fall/",
-    "https://www.healthline.com/health/home-remedies#takeaway",
-    "https://www.hopkinsmedicine.org/health/wellness-and-prevention/natural-sleep-aids-home-remedies-to-help-you-sleep",
+    "https://www.healthline.com/health/constipation/instant-indian-home-remedy-for-constipation",
+    "https://www.healthline.com/health/beauty-skin-care/indian-home-remedies-for-hair-growth",
+    "https://www.healthline.com/health/home-remedies",
     "https://www.healthline.com/health/dental-and-oral-health/home-remedies-for-toothache",
-    "https://www.dhconcepts.com/7-home-remedies-for-dental-issues/",
     "https://www.healthline.com/health/pain-relief/knee-pain-home-remedies",
-    "https://www.healthline.com/recipes/cozy-dinner-ideas"
+    "https://www.healthline.com/nutrition/how-long-does-it-take-to-lose-weight",
+    "https://www.healthline.com/health/excessive-sleepiness#causes",
+    "https://www.healthline.com/nutrition/vitamins-for-dry-skin",
+    "https://www.healthline.com/nutrition/12-foods-for-healthy-skin",
+    "https://www.healthline.com/nutrition/vitamins-for-nails?utm_source=ReadNext"
 ]
 
 # Document processing config
@@ -45,7 +47,7 @@ EMBEDDING_MODELS = {
     },
     EmbeddingsTypeEnum.Cohere.value: {
         "type": EmbeddingsTypeEnum.Cohere.value,
-        "model_name": "embed-v4.0"
+        "model_name": "embed-english-v3.0"
     },
     EmbeddingsTypeEnum.Mistral.value:{
         "type": EmbeddingsTypeEnum.Mistral.value,
@@ -196,13 +198,13 @@ APP_CONFIG = {
 
 # Active configuration using enums
 ACTIVE_CONFIG = {
-    "embedding": EmbeddingsTypeEnum.HuggingFace.value,
-    "vector_store": VectorStoresEnum.Faiss.value,
+    "embedding": EmbeddingsTypeEnum.Voyageai.value,
+    "vector_store": VectorStoresEnum.Chroma.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
-    "llm": LLMTypesEnum.GeminiLLM.value,
+    "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.RagasEvaluator.value,
-    "reranking": RerankingTypesEnum.Groq.value,
-    "chunking": ChunkingTypeEnum.Semantic.value
+    "reranking": RerankingTypesEnum.Jina.value,
+    "chunking": ChunkingTypeEnum.Manual.value
 }
 
 user_greetings = [
