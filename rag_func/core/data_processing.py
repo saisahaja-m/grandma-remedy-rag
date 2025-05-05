@@ -89,23 +89,6 @@ def load_and_process_documents() -> List[Document]:
         for chunk in chunks:
             all_docs.append(Document(page_content=chunk, metadata=doc.metadata))
 
-
-    embedding_model = get_embedding_model()
-
-    texts = [doc.page_content for doc in all_docs]
-    embeddings = embedding_model.embed_documents(texts)
-
-    if isinstance(embeddings, list):
-        embeddings = np.array(embeddings)
-
-    embedding_vectors = np.array(embeddings)
-    kmeans = KMeans(n_clusters=24, max_iter=1000, random_state=42)
-    kmeans.fit(embedding_vectors)
-    labels = kmeans.labels_
-
-    for i, doc in enumerate(all_docs):
-        doc.metadata["cluster"] = int(labels[i])
-
     return all_docs
 
 

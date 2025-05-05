@@ -60,7 +60,7 @@ class MistralEmbeddings(Embeddings):
         self.model = model_name
         self.client = Mistral(api_key=api_key)
         self.sleep_seconds = 2
-        self.batch_size = 20
+        self.batch_size = 8
 
     def embed_documents(self, documents):
         all_embeddings = []
