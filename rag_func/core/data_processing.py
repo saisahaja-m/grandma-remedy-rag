@@ -40,6 +40,7 @@ def get_chunking_strategy():
             chunk_size=chunking_config[chunk_size],
             chunk_overlap=chunking_config[chunk_overlap]
         )
+    return None
 
 
 def load_and_process_documents() -> List[Document]:

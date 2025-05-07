@@ -25,6 +25,7 @@ def get_reranker():
             model=rerank_config["model"],
             top_k=rerank_config["top_k"]
         )
+    return None
 
 
 class GroqReranker:

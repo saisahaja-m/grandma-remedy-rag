@@ -40,8 +40,9 @@ def process_query_with_rag(rag_system, user_input, chat_history="") -> Tuple[str
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
     context = format_context_from_docs(reranked_docs)
+    memories = []
 
-    prompt = create_system_prompt(user_input, chat_history, context)
+    prompt = create_system_prompt(user_input, chat_history, context, memories)
     response = rag_system["llm"].generate_response(prompt)
 
     return response, reranked_docs

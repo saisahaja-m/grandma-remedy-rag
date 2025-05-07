@@ -26,6 +26,8 @@ def get_llm_model():
             model_name=model_config["model_name"],
             temperature=model_config.get("temperature", 0.0)
         )
+    return None
+
 
 class GeminiLLM:
     """Gemini LLM implementation"""

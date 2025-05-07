@@ -20,12 +20,13 @@ def format_context_from_docs(docs):
     ])
 
 
-def create_system_prompt(query, chat_history, context):
+def create_system_prompt(query, chat_history, context, memories):
     from rag_func.constants.config import APP_CONFIG
 
     template = APP_CONFIG["prompt_template"]
     return template.format(
         query=query,
         chat_history=chat_history,
-        context=context
+        context=context,
+        memories=memories
     )

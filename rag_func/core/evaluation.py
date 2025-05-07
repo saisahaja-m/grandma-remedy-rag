@@ -14,7 +14,7 @@ def get_evaluator():
         return RagasEvaluator(metrics=eval_config["metrics"])
     elif eval_type == EvaluatorTypesEnum.TrulensEvaluator.value:
         return TrulensEvaluator(model_name=eval_config['model_name'])
-
+    return None
 
 
 class RagasEvaluator:

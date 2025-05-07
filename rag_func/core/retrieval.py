@@ -21,6 +21,7 @@ def create_vector_store(docs):
         return Chroma.from_documents(docs, embedding_model)
     elif vector_store_type == VectorStoresEnum.Annoy.value:
         return AnnoyVectorStore(docs, embeddings=embedding_model)
+    return None
 
 
 def get_retriever(docs):
@@ -49,6 +50,7 @@ def get_retriever(docs):
             retrievers=[bm25_retriever, vector_retriever],
             weights=weights
         )
+    return None
 
 
 # class ChromaVectorStore:

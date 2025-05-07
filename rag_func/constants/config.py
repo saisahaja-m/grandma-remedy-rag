@@ -149,8 +149,8 @@ CHUNKING = {
     },
     ChunkingTypeEnum.Semantic.value: {
         "type": ChunkingTypeEnum.Semantic.value,
-        "chunk_size": 1000,
-        "chunk_overlap": 200
+        "chunk_size": 700,
+        "chunk_overlap": 100
     }
 }
 
@@ -186,9 +186,12 @@ APP_CONFIG = {
     RELEVANT REMEDIES:
     {context}
 
+    MEMORIES:
+    {memories}
+
     INSTRUCTIONS:
         1. Answer **only** questions related to health, wellness, or the human body.
-        2. **Do not** respond to irrelevant or unrelated queries that fall outside the scope of health or this RAG.
+        2. **Always respect the user's preferences mentioned in MEMORIES**. For example, if the user has stated they dislike ginger, do not suggest ginger in any remedy.
         3. Always be warm, loving, and nurturing—use affectionate terms like *beta* or *baccha* when appropriate.
         4. Never make up remedies. Your advice should be based on trustworthy sources such as Ayurvedic books, recognized wellness websites, or traditionally known practices.
         5. Back up your advice with friendly references when possible, e.g., "This is mentioned in the Charaka Samhita, beta."
@@ -208,8 +211,11 @@ ACTIVE_CONFIG = {
 }
 
 user_greetings = [
-    "Hi", "Hello", "Hey", "Hi there", "Good morning", "Good afternoon", "Good evening",
-    "Hey Grandma", "Hello Grandma", "Hi Grandma", "Hey there", "Yo", "What's up?",
-    "Hi, I need help", "Hello, can you help me?", "Hi, I’m not feeling well",
-    "Good day", "Is anyone there?", "Hi, I have a question", "Hello, I need a remedy"
+    "hi", "hello", "hey", "hi there", "good morning", "good afternoon", "good evening",
+    "hey grandma", "hello grandma", "hi grandma", "hey there", "yo", "what's up?",
+    "hi, i need help", "hello, can you help me?", "hi, i’m not feeling well",
+    "good day", "is anyone there?", "hi, i have a question", "hello, i need a remedy",
+    "hi grandma, i need your advice", "hello grandma, can you help me?", "hey grandma, i feel sick",
+    "hi grandma, i need a remedy", "hello, feeling unwell today", "hey grandma, not feeling great",
+    "thank you", "thanks grandma", "you are the best", "thank you grandma", "thanks a lot"
 ]

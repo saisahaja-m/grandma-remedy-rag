@@ -22,6 +22,7 @@ def get_embedding_model():
         return CohereEmbedding(model_name=model_config["model_name"])
     elif model_type == EmbeddingsTypeEnum.Mistral.value:
         return MistralEmbeddings(model_name=model_config["model_name"])
+    return None
 
 
 class VoyageaiEmbeddings(Embeddings):
