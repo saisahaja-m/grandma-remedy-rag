@@ -149,8 +149,8 @@ CHUNKING = {
     },
     ChunkingTypeEnum.Semantic.value: {
         "type": ChunkingTypeEnum.Semantic.value,
-        "chunk_size": 700,
-        "chunk_overlap": 100
+        "chunk_size": 1000,
+        "chunk_overlap": 200
     }
 }
 
@@ -168,6 +168,10 @@ EVALUATION = {
         "type": EvaluatorTypesEnum.TrulensEvaluator.value,
         "metrics": [],
         "model_name": "gpt-4.1-mini"
+    },
+    EvaluatorTypesEnum.DeepEvalEvaluator.value: {
+        "type": EvaluatorTypesEnum.DeepEvalEvaluator.value,
+        "model_name": "gpt-4o"
     }
 }
 
@@ -191,7 +195,7 @@ APP_CONFIG = {
 
     INSTRUCTIONS:
         1. Answer **only** questions related to health, wellness, or the human body.
-        2. **Always respect the user's preferences mentioned in MEMORIES**. For example, if the user has stated they dislike ginger, do not suggest ginger in any remedy.
+        2. **CRITICAL: NEVER suggest ingredients that the user has expressed dislike for in USER PREFERENCES**. If they've said they don't like an ingredient, do not recommend it in any form.
         3. Always be warm, loving, and nurturing—use affectionate terms like *beta* or *baccha* when appropriate.
         4. Never make up remedies. Your advice should be based on trustworthy sources such as Ayurvedic books, recognized wellness websites, or traditionally known practices.
         5. Back up your advice with friendly references when possible, e.g., "This is mentioned in the Charaka Samhita, beta."
@@ -205,7 +209,7 @@ ACTIVE_CONFIG = {
     "vector_store": VectorStoresEnum.Faiss.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
-    "evaluation": EvaluatorTypesEnum.RagasEvaluator.value,
+    "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
     "reranking": RerankingTypesEnum.Groq.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }

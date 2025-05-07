@@ -33,6 +33,7 @@ class LLMTypesEnum(Enum):
 class EvaluatorTypesEnum(Enum):
     RagasEvaluator = "ragas"
     TrulensEvaluator = "trulens"
+    DeepEvalEvaluator = "deepeval"
 
 
 class EvaluatingMetricsEnum(Enum):

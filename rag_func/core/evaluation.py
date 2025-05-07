@@ -4,6 +4,9 @@ from datasets import Dataset
 from rag_func.constants.config import EVALUATION, ACTIVE_CONFIG
 from trulens.providers.openai import OpenAI
 from rag_func.constants.enums import EvaluatorTypesEnum, EvaluatingMetricsEnum
+import deepeval
+from deepeval.test_case import LLMTestCase
+from deepeval.metrics import ContextualRelevancyMetric, AnswerRelevancyMetric, FaithfulnessMetric
 
 
 def get_evaluator():
@@ -14,6 +17,8 @@ def get_evaluator():
         return RagasEvaluator(metrics=eval_config["metrics"])
     elif eval_type == EvaluatorTypesEnum.TrulensEvaluator.value:
         return TrulensEvaluator(model_name=eval_config['model_name'])
+    elif eval_type == EvaluatorTypesEnum.DeepEvalEvaluator.value:
+        return DeepEvalEvaluator(model_name=eval_config['model_name'])
     return None
 
 
@@ -72,3 +77,47 @@ class TrulensEvaluator:
         scores[EvaluatingMetricsEnum.Correctness.value] = str(correctness)
 
         return scores
+
+class DeepEvalEvaluator:
+    def __init__(self, model_name):
+        self.model_name = model_name
+
+    def evaluate(self, question: str, answer: str, retrieved_context: list):
+        from deepeval import evaluate
+
+
+        relevant_docs = [
+            doc if isinstance(doc, str) else doc.page_content
+            for doc in retrieved_context
+        ]
+
+        answer_relevance_metric = AnswerRelevancyMetric(
+            threshold=0.7,
+            model=self.model_name,
+            include_reason=True
+        )
+
+
+        faithfulness_metric = FaithfulnessMetric(
+            threshold=0.7,
+            model=self.model_name,
+            include_reason=True
+        )
+        faithfulness_test_case = LLMTestCase(
+            input=question,
+            actual_output=answer,
+            retrieval_context=relevant_docs
+        )
+
+        context_relevancy_metric = ContextualRelevancyMetric(
+            threshold=0.7,
+            model=self.model_name,
+            include_reason=True
+        )
+
+
+        results = evaluate(test_cases=[faithfulness_test_case],
+                           metrics=[answer_relevance_metric, faithfulness_metric, context_relevancy_metric])
+
+        breakpoint()
+        return results

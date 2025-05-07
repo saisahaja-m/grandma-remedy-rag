@@ -1,5 +1,5 @@
 import uuid
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever

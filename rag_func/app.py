@@ -39,13 +39,20 @@ def initialize_rag_system():
         "evaluator": evaluator
     }
 
-def process_query_with_rag(rag_system, user_input, memories, chat_history=None):
+def process_query_with_rag(rag_system, user_input, memories, chat_history):
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
     docs = [doc for doc in relevant_docs if doc.page_content.strip()]
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
     context = format_context_from_docs(reranked_docs)
 
+    prompt = create_system_prompt(user_input, chat_history, context, memories)
+    response = rag_system["llm"].generate_response(prompt)
+
+    return response, reranked_docs
+
+
+def get_chat_history(chat_history=None):
     if chat_history is None:
         try:
             if hasattr(st, 'session_state') and hasattr(st.session_state, 'messages'):
@@ -54,12 +61,7 @@ def process_query_with_rag(rag_system, user_input, memories, chat_history=None):
                 chat_history = ""
         except:
             chat_history = ""
-
-    prompt = create_system_prompt(user_input, chat_history, context, memories)
-    response = rag_system["llm"].generate_response(prompt)
-
-    return response, reranked_docs
-
+    return chat_history
 
 def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
@@ -69,7 +71,7 @@ def evaluate_response(rag_system, reranked_docs, user_input, response):
         return {"note": "Ground truth not found; evaluation skipped."}
 
     evaluation_result = rag_system["evaluator"].evaluate(
-        user_input, response, context_docs, [ground_truth]
+        user_input, response, context_docs
     )
     return evaluation_result
 
@@ -80,16 +82,17 @@ def display_chat_history():
             st.markdown(message["content"])
 
 
-def get_retrieval_permission(user_input):
+def get_retrieval_permission(user_input, chat_history):
     prompt = (
         "You are a strict classifier trained to identify whether a user input is related to health topics. "
         "Your task is to analyze the input and determine if it pertains to health, medicine, wellness, medical conditions, "
-        "home remedies, or any health-related concerns. "
+        "home remedies, any health-related concerns or something from chat history. "
         "Respond with ONLY one word: "
         "- Respond 'Yes' if the input is related to any health or wellness topic. "
         "- Respond 'No' if it is unrelated to health. "
         "Do NOT provide any explanations, context, punctuation, or additional words. "
         f"Input: {user_input}"
+        f"Chat History: {chat_history}"
     )
 
     headers = {
@@ -120,11 +123,13 @@ def get_retrieval_permission(user_input):
 def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
     st.title(APP_CONFIG["title"])
-
     rag_system = initialize_rag_system()
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
+
+    if "memories" not in st.session_state:
+        st.session_state.memories = []
 
     display_chat_history()
 
@@ -134,8 +139,9 @@ def main():
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
-        retrieval = get_retrieval_permission(user_input)
-        memories = []
+
+        chat_history = get_chat_history()
+        retrieval = get_retrieval_permission(user_input, chat_history)
 
         if user_input.lower() in user_greetings:
             response = (
@@ -145,16 +151,20 @@ def main():
             )
             reranked_docs = []
         elif retrieval == "No":
-            response = ("Oh dear, Grandma’s always happy to help with your aches, sniffles, and remedies passed down "
+            response = ("Oh dear, Grandma's always happy to help with your aches, sniffles, and remedies passed down "
                         "through the years. But when it comes to things outside of health—like rockets, robots, or"
-                        " riddles—I’m afraid this old mind doesn’t stretch quite that far! Now, if you’ve got a health "
+                        " riddles—I'm afraid this old mind doesn't stretch quite that far! Now, if you've got a health "
                         "worry or a home remedy question, come sit beside me and ask away.")
             reranked_docs = []
         else:
-            memories.append(user_input)
+            st.session_state.memories.append(user_input)
 
-            response, reranked_docs = process_query_with_rag(rag_system, user_input, memories)
-
+            response, reranked_docs = process_query_with_rag(
+                rag_system,
+                user_input,
+                st.session_state.memories,
+                chat_history
+            )
 
         with st.chat_message("assistant"):
             st.markdown(response)
@@ -162,25 +172,32 @@ def main():
         st.session_state.messages.append({"role": "assistant", "content": response})
 
         if reranked_docs:
-            pass
-            # with st.spinner("Evaluating response quality..."):
-            #     evaluation_result = evaluate_response(
-            #         rag_system=rag_system,
-            #         reranked_docs=reranked_docs,
-            #         response=response,
-            #         user_input=user_input
-            #     )
-            #     scores = evaluation_result.scores[0]  # Assuming single evaluation result
+            with st.spinner("Evaluating response quality..."):
+                evaluation_result = evaluate_response(
+                    rag_system=rag_system,
+                    reranked_docs=reranked_docs,
+                    response=response,
+                    user_input=user_input
+                )
+                breakpoint()
+                test_result = evaluation_result.test_results[0]
+                metrics_data = test_result.metrics_data
 
-                # st.subheader("Evaluation Metrics")
-                # st.write(
-                #     {
-                #         "Faithfulness": round(scores["faithfulness"], 3),
-                #         "Answer Relevancy": round(scores["answer_relevancy"], 3),
-                #         "Response Groundedness": round(scores["nv_response_groundedness"], 3),
-                #         "Context Relevance": round(scores["nv_context_relevance"], 3),
-                #     }
-                # )
+                scores_dict = {}
+                for metric in metrics_data:
+                    key = metric.name.lower().replace(' ', '_')
+                    scores_dict[key] = metric.score
+
+                st.subheader("Evaluation Metrics")
+
+                st.write(
+                    {
+                        "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
+                        "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
+                        "Response Groundedness": round(scores_dict.get("nv_response_groundedness", 0), 3),
+                        "Context Relevance": round(scores_dict.get("nv_context_relevance", 0), 3),
+                    }
+                )
 
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
 
