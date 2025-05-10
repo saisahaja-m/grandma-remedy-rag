@@ -179,7 +179,6 @@ def main():
                     response=response,
                     user_input=user_input
                 )
-                breakpoint()
                 test_result = evaluation_result.test_results[0]
                 metrics_data = test_result.metrics_data
 

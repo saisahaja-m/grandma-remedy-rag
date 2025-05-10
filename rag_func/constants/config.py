@@ -205,7 +205,7 @@ APP_CONFIG = {
 
 # Active configuration using enums
 ACTIVE_CONFIG = {
-    "embedding": EmbeddingsTypeEnum.Mistral.value,
+    "embedding": EmbeddingsTypeEnum.HuggingFace.value,
     "vector_store": VectorStoresEnum.Faiss.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,

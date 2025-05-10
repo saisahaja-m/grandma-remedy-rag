@@ -48,11 +48,11 @@ def process_query_with_rag(rag_system, user_input, chat_history="") -> Tuple[str
     return response, reranked_docs
 
 
-def evaluate_response(rag_system, user_input, response, reranked_docs, ground_truth):
+def evaluate_response(rag_system, user_input, response, reranked_docs):
     context_docs = [doc.page_content for doc in reranked_docs]
 
     evaluation_result = rag_system["evaluator"].evaluate(
-        user_input, response, context_docs, [ground_truth]
+        user_input, response, context_docs
     )
 
     return evaluation_result
@@ -69,6 +69,7 @@ def load_questions_and_ground_truths(filepath: str) -> List[Dict[str, str]]:
 
 def run_evaluation(active_config: Dict, questions_file: str, output_file: str = None):
     rag_system = initialize_rag_system()
+    eval_result = []
 
     qa_pairs = load_questions_and_ground_truths(questions_file)
     results = {
@@ -93,20 +94,25 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
                 rag_system=rag_system,
                 user_input=question,
                 response=answer,
-                reranked_docs=reranked_docs,
-                ground_truth=ground_truth
+                reranked_docs=reranked_docs
             )
 
-            scores = eval_result.scores[0]
+            test_result = eval_result.test_results[0]
+            metrics_data = test_result.metrics_data
+
+            scores_dict = {}
+            for metric in metrics_data:
+                key = metric.name.lower().replace(' ', '_')
+                scores_dict[key] = metric.score
 
             # Add scores to metrics
-            results["metrics"]["faithfulness"].append(scores["faithfulness"])
-            results["metrics"]["answer_relevancy"].append(scores["answer_relevancy"])
-            results["metrics"]["response_groundedness"].append(scores["nv_response_groundedness"])
-            results["metrics"]["context_relevance"].append(scores["nv_context_relevance"])
+            results["metrics"]["faithfulness"].append(scores_dict.get("faithfulness", 0.0))
+            results["metrics"]["answer_relevancy"].append(scores_dict.get("answer_relevancy", 0.0))
+            results["metrics"]["response_groundedness"].append(scores_dict.get("nv_response_groundedness", 0.0))
+            results["metrics"]["context_relevance"].append(scores_dict.get("nv_context_relevance", 0.0))
         else:
             # No relevant documents found
-            scores = {
+            scores_dict = {
                 "faithfulness": 0.0,
                 "answer_relevancy": 0.0,
                 "nv_response_groundedness": 0.0,
@@ -119,22 +125,25 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
             "ground_truth": ground_truth,
             "generated_answer": answer,
             "scores": {
-                "faithfulness": scores["faithfulness"],
-                "answer_relevancy": scores["answer_relevancy"],
-                "response_groundedness": scores["nv_response_groundedness"],
-                "context_relevance": scores["nv_context_relevance"]
+                "faithfulness": scores_dict.get("faithfulness", 0.0),
+                "answer_relevancy": scores_dict.get("answer_relevancy", 0.0),
+                "response_groundedness": scores_dict.get("nv_response_groundedness", 0.0),
+                "context_relevance": scores_dict.get("nv_context_relevance", 0.0)
             }
         })
 
+    # Calculate average scores
     for metric in results["metrics"]:
         if results["metrics"][metric]:
-            results["metrics"][metric] = sum(results["metrics"][metric]) / len(results["metrics"][metric])
+            results["metrics"][metric] = round(sum(results["metrics"][metric]) / len(results["metrics"][metric]), 3)
         else:
             results["metrics"][metric] = 0.0
 
     if output_file:
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
+        with open(output_file, 'w') as f:
+            json.dump(eval_result, f, indent=2)
         print(f"Results saved to {output_file}")
 
     return results

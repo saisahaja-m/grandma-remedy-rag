@@ -85,7 +85,6 @@ class DeepEvalEvaluator:
     def evaluate(self, question: str, answer: str, retrieved_context: list):
         from deepeval import evaluate
 
-
         relevant_docs = [
             doc if isinstance(doc, str) else doc.page_content
             for doc in retrieved_context
@@ -96,7 +95,6 @@ class DeepEvalEvaluator:
             model=self.model_name,
             include_reason=True
         )
-
 
         faithfulness_metric = FaithfulnessMetric(
             threshold=0.7,
@@ -119,5 +117,4 @@ class DeepEvalEvaluator:
         results = evaluate(test_cases=[faithfulness_test_case],
                            metrics=[answer_relevance_metric, faithfulness_metric, context_relevancy_metric])
 
-        breakpoint()
         return results
