@@ -1,7 +1,6 @@
-import openai
 import streamlit as st
 import requests
-import os
+import json
 from dotenv import load_dotenv
 import pandas as pd
 from rag_func.core.data_processing import load_and_process_documents
@@ -11,10 +10,9 @@ from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
 from rag_func.utils.helpers import format_chat_history, format_context_from_docs, create_system_prompt
 from rag_func.constants.config import APP_CONFIG, OPENAI_API_KEY, GEMINI_API_KEY
-from typing import Dict, Any
+from typing import Dict
 import google.generativeai as genai
-from google.generativeai.types import FunctionDeclaration, Tool
-from google.genai import types
+
 load_dotenv()
 
 def get_ground_truth_for_question(question: str, filepath: str = "ground_truths.csv") -> str:
@@ -106,143 +104,164 @@ def display_evaluation_results(evaluation_result):
         }
     )
 
-genai.configure(api_key=GEMINI_API_KEY)
+def classify_query_with_openai_functions(user_input: str, chat_history: str) -> Dict:
 
-# Function Declarations
-classify_query_function = FunctionDeclaration(
-    name="classify_query",
-    description="Classify user queries for health chatbot routing",
-    parameters={
-        "type": "OBJECT",
-        "properties": {
-            "query_type": {
-                "type": "STRING",
-                "enum": ["greeting", "health", "non_health"],
-                "description": "Type of user query"
-            },
-            "greeting_text": {
-                "type": "STRING",
-                "description": "Identified greeting text (if greeting)"
-            },
-            "query_text": {
-                "type": "STRING",
-                "description": "User's actual question content"
-            },
-            "health_category": {
-                "type": "STRING",
-                "enum": ["remedy", "symptom", "herb", "wellness", "general_health", "other"],
-                "description": "Health category classification"
-            },
-            "detected_category": {
-                "type": "STRING",
-                "enum": ["technology", "politics", "entertainment", "mathematics", "finance", "other"],
-                "description": "Category for non-health queries"
+    functions = [
+        {
+            "name": "classify_query",
+            "description": "Classify the user query into greeting, health-related, or non-health categories",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query_type": {
+                        "type": "string",
+                        "enum": ["greeting", "health", "non_health"],
+                        "description": "The type of query detected"
+                    },
+                    "greeting_text": {
+                        "type": "string",
+                        "description": "The greeting text identified in the user's message (for greeting type)"
+                    },
+                    "query_text": {
+                        "type": "string",
+                        "description": "The user's query text (for health and non-health types)"
+                    },
+                    "health_category": {
+                        "type": "string",
+                        "enum": ["remedy", "symptom", "herb", "wellness", "general_health", "other"],
+                        "description": "The category of health query (for health type)"
+                    },
+                    "detected_category": {
+                        "type": "string",
+                        "enum": ["technology", "politics", "entertainment", "mathematics", "finance", "other"],
+                        "description": "The detected category of the non-health query (for non-health type)"
+                    }
+                },
+                "required": ["query_type"]
             }
-        },
-        "required": ["query_type"]  # Added required field
-    }
-)
-
-# Create Tool remains the same
-query_classification_tool = Tool(
-    function_declarations=[classify_query_function]
-)
-
-
-def classify_query_with_gemini_functions(user_input: str, chat_history: str) -> Dict[str, Any]:
-    try:
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash',
-            tools=[query_classification_tool]
-        )
-
-        tool_config = types.ToolConfig(
-            function_calling_config=types.FunctionCallingConfig(
-                mode=None, allowed_function_names=["get_current_temperature"]
-            )
-        )
-
-        config = types.GenerateContentConfig(
-            temperature=0,
-            tools=[query_classification_tool],
-            tool_config=tool_config,
-        )
-
-        # Generate content with proper configuration
-        response = client.model.generate_content(
-            f"Query: {user_input}\nChat History: {chat_history}",
-            generation_config=genai.types.GenerationConfig(
-                config=config
-            )
-        )
-
-        # Process response
-        if response.candidates:
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, 'function_call'):
-                    args = part.function_call.args
-                    return _process_function_args(args, user_input)
-
-        # Fallback to health query
-        return {
-            "name": "handle_health_query",
-            "input": {"query_text": user_input}
         }
+    ]
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-4-turbo",
+        "messages": [
+            {
+                "role": "system",
+                "content": """
+                You are an assistant that helps classify user queries for a health advice chatbot called "Grandma's Remedies".
+                You must determine if the query is:
+                1. A simple greeting
+                2. A health-related question that should be answered
+                3. A non-health question that should be politely declined
+
+                For greetings, set query_type to "greeting" and include the greeting_text.
+
+                For health queries, set query_type to "health", include the query_text, and specify the health_category.
+                Health categories include: "remedy", "symptom", "herb", "wellness", "general_health", or "other"
+
+                For non-health queries, set query_type to "non_health", include the query_text, and specify the detected_category.
+                Non-health categories include: "technology", "politics", "entertainment", "mathematics", "finance", or "other"
+
+                Examples of health queries:
+                - "What can I do for a headache?"
+                - "Is turmeric good for inflammation?"
+                - "Best home remedy for sore throat?"
+
+                Examples of non-health queries:
+                - "How does a computer work?"
+                - "What's the capital of France?"
+                - "Can you solve this math problem?"
+
+                Examples of greetings:
+                - "Hello"
+                - "Hi there"
+                - "Namaste"
+                """
+            },
+            {"role": "user", "content": f"Query: {user_input}\nChat History: {chat_history}"}
+        ],
+        "functions": functions,
+        "function_call": {"name": "classify_query"},
+        "temperature": 0.0,
+        "max_tokens": 1024
+    }
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data
+        )
+
+        response.raise_for_status()
+        response_data = response.json()
+
+        function_call = response_data["choices"][0]["message"].get("function_call")
+
+        if not function_call:
+            return {
+                "name": "handle_health_query",
+                "input": {
+                    "query_text": user_input,
+                    "health_category": "general_health"
+                }
+            }
+
+        args = json.loads(function_call["arguments"])
+        query_type = args.get("query_type")
+
+        if query_type == "greeting":
+            return {
+                "name": "handle_greeting",
+                "input": {
+                    "greeting_text": args.get("greeting_text", "")
+                }
+            }
+        elif query_type == "non_health":
+            return {
+                "name": "handle_non_health_query",
+                "input": {
+                    "query_text": args.get("query_text", user_input),
+                    "detected_category": args.get("detected_category", "other")
+                }
+            }
+        else:
+            return {
+                "name": "handle_health_query",
+                "input": {
+                    "query_text": args.get("query_text", user_input),
+                    "health_category": args.get("health_category", "general_health")
+                }
+            }
 
     except Exception as e:
-        st.error(f"Gemini Error: {str(e)}")
+        st.error(f"Error with OpenAI API: {e}")
         return {
             "name": "handle_health_query",
-            "input": {"query_text": user_input}
-        }
-
-
-# Update the helper function
-def _process_function_args(args: dict, user_input: str) -> dict:
-    """Process and validate function call arguments"""
-    query_type = args.get("query_type", "health").lower()
-
-    handlers = {
-        "greeting": {
-            "name": "handle_greeting",
-            "input": {"greeting_text": args.get("greeting_text", user_input)}
-        },
-        "non_health": {
-            "name": "handle_non_health_query",
             "input": {
-                "query_text": args.get("query_text", user_input),
-                "detected_category": args.get("detected_category", "other")
+                "query_text": user_input,
+                "health_category": "general_health"
             }
         }
-    }
-
-    return handlers.get(query_type, {
-        "name": "handle_health_query",
-        "input": {
-            "query_text": args.get("query_text", user_input),
-            "health_category": args.get("health_category", "general_health")
-        }
-    })
-
 
 def handle_greeting(input_data):
-    openai.api_key = OPENAI_API_KEY
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-2.0-flash-exp")
+    greeting_text = input_data.get("greeting_text", "")
 
     prompt = f"""
     You are Grandma, a warm and affectionate elder who shares traditional wisdom and natural remedies.
-    A user has greeted you like {input_data}
+    A user has greeted you by saying: "{greeting_text}"
     Respond in your loving Grandma style, welcoming the user and offering help with traditional remedies. Keep it heartwarming.
     """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": prompt}
-        ],
-        max_tokens=150
-    )
-    return response.choices[0].message.content.strip(), []
+    response = model.generate_content(prompt)
+    return response.text.strip(), []
 
 def handle_non_health_query(input_data):
     query_text = input_data.get("query_text", "")
@@ -291,7 +310,7 @@ def main():
         chat_history = get_chat_history()
 
         with st.spinner("Grandma is thinking..."):
-            tool_call = classify_query_with_gemini_functions(user_input, chat_history)
+            tool_call = classify_query_with_openai_functions(user_input, chat_history)
 
             function_name = tool_call.get("name")
             input_data = tool_call.get("input", {})
