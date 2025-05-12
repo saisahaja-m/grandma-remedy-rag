@@ -91,13 +91,13 @@ class DeepEvalEvaluator:
         ]
 
         answer_relevance_metric = AnswerRelevancyMetric(
-            threshold=0.7,
+            threshold=0.0,
             model=self.model_name,
             include_reason=True
         )
 
         faithfulness_metric = FaithfulnessMetric(
-            threshold=0.7,
+            threshold=0.0,
             model=self.model_name,
             include_reason=True
         )
@@ -108,7 +108,7 @@ class DeepEvalEvaluator:
         )
 
         context_relevancy_metric = ContextualRelevancyMetric(
-            threshold=0.7,
+            threshold=0.0,
             model=self.model_name,
             include_reason=True
         )
