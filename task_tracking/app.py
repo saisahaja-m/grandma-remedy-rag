@@ -1,17 +1,18 @@
 import streamlit as st
 from openai import OpenAI
-import requests, json, os
+import json, os
 from datetime import datetime
 from dotenv import load_dotenv
-from typing import Dict
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+
 class TaskTracker:
     def __init__(self):
+        # Initialize session state variables if they don't exist
         if "tasks" not in st.session_state:
             st.session_state.tasks = []
         if "messages" not in st.session_state:
@@ -54,121 +55,186 @@ class TaskTracker:
             for task in st.session_state.tasks
         ])
 
-def classify_query_with_openai_functions(user_input: str, chat_history: str) -> Dict:
-    functions = [
+
+def classify_query_with_openai_functions(customised_prompt: str):
+    tools = [
         {
-            "name": "classify_query",
-            "description": "Classify the user query into add, update, delete, list or other task-related actions",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query_type": {
-                        "type": "string",
-                        "enum": ["add", "update", "delete", "list", "other"]
+            "type": "function",
+            "function": {
+                "name": "add_task",
+                "description": "Adds task to list that is given by user.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "Description of the task to add"
+                        }
                     },
-                    "task_id": {"type": "integer"},
-                    "description": {"type": "string"},
-                    "new_description": {"type": "string"},
-                    "new_status": {"type": "string"}
-                },
-                "required": ["query_type"]
+                    "required": ["description"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "delete_task",
+                "description": "Deletes a task from the list by ID.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {
+                            "type": "integer",
+                            "description": "ID of the task to delete"
+                        }
+                    },
+                    "required": ["task_id"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_all_tasks",
+                "description": "Gets all the list of tasks that user have",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "update_task",
+                "description": "Updates the description or status of a task.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {
+                            "type": "integer",
+                            "description": "ID of the task to update"
+                        },
+                        "new_description": {
+                            "type": "string",
+                            "description": "New description for the task"
+                        },
+                        "new_status": {
+                            "type": "string",
+                            "description": "New status for the task (e.g., 'pending', 'completed')"
+                        }
+                    },
+                    "required": ["task_id"]
+                }
             }
         }
     ]
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    input_messages = [{"role": "user", "content": customised_prompt}]
 
-    data = {
-        "model": "gpt-4-0613",
-        "messages": [
-            {
-                "role": "system",
-                "content": """
-                You are a task assistant that classifies user input into task operations: add, update, delete, list, or other.
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=input_messages,
+        tools=tools,
+        tool_choice="auto"
+    )
 
-                Rules:
-                - If the input contains phrases like:
-                    - "should go to dance class"
-                    - "buy fruits"
-                    - "go to shopping"
-                  Then classify as: **add**
-                
-                - If the input contains phrases like:
-                    - "came from dance class"
-                    - "done with buying fruits"
-                    - "done with shopping"
-                  Then classify as: **update**
-                
-                - If the input contains the words "remove" or "delete" along with a task description, then classify as: **delete**
-                
-                - If the input asks about existing tasks (e.g., "What are my tasks?", "Show tasks", "List all tasks"), then classify as: **list**
-                
-                - Anything else: **other**
-                
-                Examples:
-                - "I should go to dance class" => add
-                - "Buy fruits later today" => add
-                - "Came from dance class just now" => update
-                - "Done with shopping" => update
-                - "Delete the shopping task" => delete
-                - "Remove buy fruits from my list" => delete
-                - "What tasks do I have?" => list
-                """
-            },
-            {"role": "user", "content": f"Query: {user_input}\nChat History: {chat_history}"}
-        ],
-        "functions": functions,
-        "function_call": {"name": "classify_query"},
-        "temperature": 0.0
-    }
+    task_tracker = TaskTracker()
+    result = None
+    response_message = response.choices[0].message
 
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data
+    # Check if there's a tool call in the response
+    if response_message.tool_calls:
+        tool_call = response_message.tool_calls[0]
+        function_name = tool_call.function.name
+        function_args = json.loads(tool_call.function.arguments)
+
+        if function_name == "add_task":
+            description = function_args.get("description")
+            result = task_tracker.add_task(description)
+
+        elif function_name == "update_task":
+            task_id = function_args.get("task_id")
+            new_description = function_args.get("new_description")
+            new_status = function_args.get("new_status")
+            result = task_tracker.update_task(task_id, new_description, new_status)
+
+        elif function_name == "delete_task":
+            task_id = function_args.get("task_id")
+            result = task_tracker.delete_task(task_id)
+
+        elif function_name == "get_all_tasks":
+            tasks = task_tracker.get_all_tasks()
+            result = task_tracker.format_tasks()
+
+        # Add the assistant's response and function call to messages
+        input_messages.append({
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "arguments": tool_call.function.arguments
+                    }
+                }
+            ],
+            "content": None
+        })
+
+        # Add the function response
+        input_messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": str(result)
+        })
+
+        # Get the final response
+        second_response = client.chat.completions.create(
+            model="gpt-4",
+            messages=input_messages
         )
-        response.raise_for_status()
-        response_data = response.json()
-        function_call = response_data["choices"][0]["message"]["function_call"]
-        return json.loads(function_call["arguments"])
 
-    except Exception as e:
-        st.error(f"Error with classification: {e}")
-        return {"query_type": "other"}
+        return second_response.choices[0].message.content
 
-def call_function(tracker, classification):
-    qtype = classification.get("query_type")
+    return response_message.content
 
-    if qtype == "add":
-        description = classification.get("description", "")
-        if description:
-            task_id = tracker.add_task(description)
-            return f"✅ Task {task_id} added: {description}"
-        return "⚠️ Please provide a task description."
-    elif qtype == "update":
-        updated = tracker.update_task(
-            classification.get("task_id"),
-            classification.get("new_description"),
-            classification.get("new_status")
-        )
-        return "✅ Task updated!" if updated else "❌ Could not find or update the task."
-    elif qtype == "delete":
-        deleted = tracker.delete_task(classification.get("task_id"))
-        return "🗑️ Task deleted." if deleted else "❌ Could not find the task to delete."
-    elif qtype == "list":
-        return tracker.format_tasks()
-    else:
-        return "🤖 I didn't understand that. Try commands like 'Add finish homework' or 'Delete task 2'."
+
+def customised_user_prompt(chat_history, user_query):
+    task_tracker = TaskTracker()
+    user_tasks = task_tracker.format_tasks()
+
+    customised_prompt = f"""
+    You are a helpful assistant that helps users manage their tasks effectively through natural conversations.
+
+    Current tasks: {user_tasks}
+
+    Chat history: {chat_history}
+
+    User input: {user_query}
+
+    Your goal is to:
+    1. Understand the user's intent from their input and chat history
+    2. Determine the most appropriate task management function to call
+    3. Respond in a helpful, conversational way
+
+    For add_task: Extract the task description and add it to the list
+    For update_task: Identify which task to update and what changes to make
+    For delete_task: Identify which task ID to delete
+    For get_all_tasks: Simply return the current list of tasks
+
+    Always prefer accurate intent classification over guessing. If you're unsure, default to asking the user for clarification.
+    """
+    return customised_prompt
+
 
 def main():
     st.set_page_config(page_title="Task Chatbot", page_icon="✅", layout="centered")
-    st.title("🧠 Task Tracking Chatbot")
+    st.title("Task Tracking Chatbot")
 
-    tracker = TaskTracker()
+    task_tracker = TaskTracker()
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -179,13 +245,15 @@ def main():
         with st.chat_message("user"):
             st.write(user_input)
 
-        chat_history = "\n".join([m["content"] for m in st.session_state.messages if m["role"] == "user"])
-        classification = classify_query_with_openai_functions(user_input, chat_history)
-        reply = call_function(tracker, classification)
+        chat_history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-5:]])
 
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        customised_prompt = customised_user_prompt(chat_history=chat_history, user_query=user_input)
+        assistant_response = classify_query_with_openai_functions(customised_prompt)
+
+        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
         with st.chat_message("assistant"):
-            st.write(reply)
+            st.write(assistant_response)
+
 
 if __name__ == "__main__":
     main()
