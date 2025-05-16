@@ -1,49 +1,56 @@
+import json
 import requests
-from langchain.schema import Document
-from rag_func.config.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY
 import cohere
+import re
+from langchain.schema import Document
+from rag_func.constants.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY, JINA_API_KEY
 from typing import List, Dict
+from rag_func.constants.enums import RerankingTypesEnum
 
 
 def get_reranker():
     rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
     rerank_type = rerank_config["type"]
 
-    if rerank_type == "groq":
+    if rerank_type == RerankingTypesEnum.Groq.value:
         return GroqReranker(
             model=rerank_config["model"],
             top_k=rerank_config.get("top_k", 5)
         )
-    elif rerank_type == "cohere":
+    elif rerank_type == RerankingTypesEnum.Cohere.value:
         return CohereReranker(
             model=rerank_config["model"])
+    elif rerank_type == RerankingTypesEnum.Jina.value:
+        return JinaReranker(
+            model=rerank_config["model"],
+            top_k=rerank_config["top_k"]
+        )
+    return None
 
 
-class GroqReranker():
-
-    def __init__(self, model, top_k=5):
+class GroqReranker:
+    def __init__(self, model: str, top_k: int = 5, api_key: str = None):
         self.model = model
         self.top_k = top_k
-        self.api_key = GROQ_API_KEY
+        self.api_key = api_key or GROQ_API_KEY  # Fallback if passed as None
 
     def rerank(self, query: str, documents: List[Document]) -> List[Document]:
-
         reranked = []
 
         for doc in documents:
-            prompt = f"""
-            You are a helpful assistant. Score the relevance of the following context to the 
-            user's query on a scale from 0 to 1.
-            Query: {query}        
-            Context:
-            {doc.page_content}
-    
-            Score (just a number between 0 and 1):"""
+            prompt = (
+                "You are a helpful assistant. Score the relevance of the following context "
+                "to the user's query on a scale from 0.0 to 1.0.\n\n"
+                f"Query: {query}\n"
+                f"Context:\n{doc.page_content}\n\n"
+                "Score (respond with only a float from 0.0 to 1.0):"
+            )
 
             try:
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"}
+                    "Content-Type": "application/json"
+                }
 
                 data = {
                     "model": self.model,
@@ -56,11 +63,15 @@ class GroqReranker():
                 response = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers=headers,
-                    json=data
+                    json=data,
+                    timeout=10
                 )
 
+                response.raise_for_status()
                 score_text = response.json()["choices"][0]["message"]["content"].strip()
-                score = float(score_text.split()[0])  # Get first number from response
+                match = re.search(r"\d*\.?\d+", score_text)
+                score = float(match.group()) if match else 0.0
+
                 reranked.append((doc, score))
 
             except Exception as e:
@@ -92,3 +103,42 @@ class CohereReranker:
         for result in response.results
         if result.document and result.document.get("text")
     ]
+
+class JinaReranker:
+    def __init__(self, model, top_k):
+        self.model = model
+        self.top_k = top_k
+
+    def rerank(self, query, documents):
+
+        formatted_docs = [{"text": doc.page_content} for doc in documents]
+
+        url = 'https://api.jina.ai/v1/rerank'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': JINA_API_KEY
+        }
+        data = {
+            "model": self.model,
+            "query": query,
+            "top_n": self.top_k,
+            "documents": formatted_docs,
+            "return_documents": True  # Set to True to get documents back
+        }
+
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response_data = response.json()
+
+        reranked_docs = []
+        if 'results' in response_data:
+            sorted_results = sorted(response_data['results'], key=lambda x: x['index'])
+
+            for result in sorted_results:
+                idx = result['index']
+                if 0 <= idx < len(documents):
+                    doc = documents[idx]
+                    if hasattr(doc, 'metadata'):
+                        doc.metadata['relevance_score'] = result['relevance_score']
+                    reranked_docs.append(doc)
+
+        return reranked_docs

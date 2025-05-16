@@ -4,6 +4,7 @@ class EmbeddingsTypeEnum(Enum):
     HuggingFace = "huggingface"
     Voyageai = "voyageai"
     Cohere = "cohere"
+    Mistral = "mistral"
 
 
 class InputTypesEnum(Enum):
@@ -26,12 +27,13 @@ class DocProcessingEnum(Enum):
 class LLMTypesEnum(Enum):
     GeminiLLM = "gemini"
     OpenAiLLM = "openai"
-    GroqLLM = "groq"
+    ClaudeLLM = "claude"
 
 
 class EvaluatorTypesEnum(Enum):
     RagasEvaluator = "ragas"
     TrulensEvaluator = "trulens"
+    DeepEvalEvaluator = "deepeval"
 
 
 class EvaluatingMetricsEnum(Enum):
@@ -52,4 +54,10 @@ class RetrievalTypesEnum(Enum):
     Vector = "vector"
     bm25 = "bm25"
     Ensemble = "ensemble"
+    Semantic = "semantic"
 
+
+class RerankingTypesEnum(Enum):
+    Groq = "groq"
+    Cohere = "cohere"
+    Jina = "jina"

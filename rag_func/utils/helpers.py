@@ -1,6 +1,3 @@
-import streamlit as st
-
-
 def format_chat_history(messages, max_tokens=1000):
     history_lines = []
     for i in range(0, len(messages) - 1, 2):
@@ -23,12 +20,13 @@ def format_context_from_docs(docs):
     ])
 
 
-def create_system_prompt(query, chat_history, context):
-    from rag_func.config.config import APP_CONFIG
+def create_system_prompt(query, chat_history, context, memories):
+    from rag_func.constants.config import APP_CONFIG
 
     template = APP_CONFIG["prompt_template"]
     return template.format(
         query=query,
         chat_history=chat_history,
-        context=context
+        context=context,
+        memories=memories
     )

@@ -3,11 +3,11 @@ import json
 import re
 from typing import List
 from langchain.schema import Document
-from langchain.document_loaders import WebBaseLoader
-from rag_func.config.config import URLS, CHUNKING, ACTIVE_CONFIG
+from langchain_community.document_loaders import WebBaseLoader
+from rag_func.constants.config import URLS, CHUNKING, ACTIVE_CONFIG
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
-from rag_func.config.enums import ChunkingTypeEnum, DocProcessingEnum
+from rag_func.constants.enums import ChunkingTypeEnum, DocProcessingEnum
 
 
 def get_chunking_strategy():
@@ -37,6 +37,7 @@ def get_chunking_strategy():
             chunk_size=chunking_config[chunk_size],
             chunk_overlap=chunking_config[chunk_overlap]
         )
+    return None
 
 
 def load_and_process_documents() -> List[Document]:
@@ -125,12 +126,11 @@ class SentenceWindowChunker:
 
     def __init__(self, window_size: int = 2, window_overlap: int = 1):
         self.parser = SentenceWindowNodeParser.from_defaults(
-            window_size=window_size,
-            window_overlap=window_overlap
+            window_size=window_size
         )
 
     def chunk_text(self, text: str) -> List[str]:
-        document = Document(text=text)
+        document = Document(text=text, page_content="")
         nodes = self.parser.get_nodes_from_documents([document])
         return [node.text for node in nodes]
 
@@ -143,19 +143,23 @@ class SemanticChunker:
     def chunk_text(self, text: str) -> List[str]:
         from flair.splitter import SegtokSentenceSplitter
 
-        splitter = SegtokSentenceSplitter()
+        text = text.strip()
+        if not text:
+            return []
 
-        sentences = splitter.split(text)
+        splitter = SegtokSentenceSplitter()
+        sentences = [s for s in splitter.split(text) if s.to_plain_string().strip()]
 
         chunks = []
         current_chunk = ""
 
         for sentence in sentences:
-            if len(current_chunk) + len(sentence.to_plain_string()) <= self.chunk_size:
-                current_chunk += " " + sentence.to_plain_string()
+            sentence_str = sentence.to_plain_string()
+            if len(current_chunk) + len(sentence_str) <= self.chunk_size:
+                current_chunk += " " + sentence_str
             else:
                 chunks.append(current_chunk.strip())
-                current_chunk = sentence.to_plain_string()
+                current_chunk = sentence_str
 
         if current_chunk:
             chunks.append(current_chunk.strip())
@@ -164,7 +168,7 @@ class SemanticChunker:
 
 def extract_title(content: str) -> str:
     lines = content.split('\n')
-    for line in lines[:5]:  # Check first 5 lines
+    for line in lines[:5]:
         if len(line) > 10 and len(line) < 100 and not line.startswith('http'):
             return line.strip()
     return "Remedy Information"
