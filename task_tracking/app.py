@@ -70,7 +70,7 @@ def customised_user_prompt(user_query):
 
 
 def main():
-    from task_tracking.function_calling import classify_query_with_claude_functions
+    from task_tracking.function_calling import classify_query_with_gemini_functions
 
     st.set_page_config(page_title="Task Chatbot", page_icon="✅", layout="centered")
     st.title("Task Tracking Chatbot")
@@ -88,7 +88,7 @@ def main():
             st.write(user_input)
 
         current_customised_prompt = customised_user_prompt(user_query=user_input)
-        assistant_response = classify_query_with_claude_functions(customised_prompt=current_customised_prompt)
+        assistant_response = classify_query_with_gemini_functions(customised_prompt=current_customised_prompt)
 
         if assistant_response is None:
             assistant_response = "Sorry, I couldn't process that. Please try again."
