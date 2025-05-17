@@ -194,7 +194,7 @@ def main():
                         "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
                         "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
                         "Response Groundedness": round(scores_dict.get("nv_response_groundedness", 0), 3),
-                        "Context Relevance": round(scores_dict.get("nv_context_relevance", 0), 3),
+                        "Context Relevance": round(scores_dict.get("context_relevancy", 0), 3),
                     }
                 )
 
