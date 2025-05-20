@@ -209,7 +209,7 @@ ACTIVE_CONFIG = {
     "vector_store": VectorStoresEnum.Faiss.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
-    "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
+    "evaluation": EvaluatorTypesEnum.RagasEvaluator.value,
     "reranking": RerankingTypesEnum.Groq.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }

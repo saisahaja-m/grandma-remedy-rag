@@ -47,9 +47,14 @@ def process_query_with_rag(rag_system, user_input, memories, chat_history):
     context = format_context_from_docs(reranked_docs)
 
     prompt = create_system_prompt(user_input, chat_history, context, memories)
+
     response = rag_system["llm"].generate_response(prompt)
 
-    return response, reranked_docs
+    def response_generator():
+        for chunk in stream_response(response):
+            yield chunk
+
+    return response_generator(), reranked_docs
 
 
 def get_chat_history(chat_history=None):
@@ -120,6 +125,13 @@ def get_retrieval_permission(user_input, chat_history):
     return response.json()["content"][0]["text"].strip()
 
 
+def stream_response(response, delay=0.01, chunk_size=3):
+    import time
+    for i in range(0, len(response), chunk_size):
+        yield response[i:i + chunk_size]
+        time.sleep(delay)
+
+
 def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
     st.title(APP_CONFIG["title"])
@@ -143,6 +155,11 @@ def main():
         chat_history = get_chat_history()
         retrieval = get_retrieval_permission(user_input, chat_history)
 
+        # Create a placeholder for the streaming response
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            full_response = ""
+
         if user_input.lower() in user_greetings:
             response = (
                 "Namaste, beta! How wonderful to hear from you. What can Grandma help you with today? "
@@ -150,24 +167,42 @@ def main():
                 "I'm sure we can find something to soothe your woes!"
             )
             reranked_docs = []
+
+            # Stream the greeting response
+            for chunk in stream_response(response):
+                full_response += chunk
+                message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(full_response)
+
         elif retrieval == "No":
             response = ("Oh dear, Grandma's always happy to help with your aches, sniffles, and remedies passed down "
                         "through the years. But when it comes to things outside of health—like rockets, robots, or"
                         " riddles—I'm afraid this old mind doesn't stretch quite that far! Now, if you've got a health "
                         "worry or a home remedy question, come sit beside me and ask away.")
             reranked_docs = []
+
+            # Stream the non-retrieval response
+            for chunk in stream_response(response):
+                full_response += chunk
+                message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(full_response)
+
         else:
             st.session_state.memories.append(user_input)
 
-            response, reranked_docs = process_query_with_rag(
+            response_generator, reranked_docs = process_query_with_rag(
                 rag_system,
                 user_input,
                 st.session_state.memories,
                 chat_history
             )
 
-        with st.chat_message("assistant"):
-            st.markdown(response)
+            for chunk in response_generator:
+                full_response += chunk
+                message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(full_response)
+
+            response = full_response
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -179,22 +214,16 @@ def main():
                     response=response,
                     user_input=user_input
                 )
-                test_result = evaluation_result.test_results[0]
-                metrics_data = test_result.metrics_data
 
-                scores_dict = {}
-                for metric in metrics_data:
-                    key = metric.name.lower().replace(' ', '_')
-                    scores_dict[key] = metric.score
+                scores = evaluation_result.scores[0]
 
                 st.subheader("Evaluation Metrics")
-
                 st.write(
                     {
-                        "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
-                        "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
-                        "Response Groundedness": round(scores_dict.get("nv_response_groundedness", 0), 3),
-                        "Context Relevance": round(scores_dict.get("nv_context_relevance", 0), 3),
+                        "Faithfulness": round(scores["faithfulness"], 3),
+                        "Answer Relevancy": round(scores["answer_relevancy"], 3),
+                        "Response Groundedness": round(scores["nv_response_groundedness"], 3),
+                        "Context Relevance": round(scores["nv_context_relevance"], 3),
                     }
                 )
 
