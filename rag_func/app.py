@@ -28,14 +28,14 @@ def initialize_rag_system():
     docs = load_and_process_documents()
     retriever = get_retriever(docs)
     reranker = get_reranker()
-    llm = get_llm_model()
+    # llm = get_llm_model()
     evaluator = get_evaluator()
 
     return {
         "docs": docs,
         "retriever": retriever,
         "reranker": reranker,
-        "llm": llm,
+        # "llm": llm,
         "evaluator": evaluator
     }
 
@@ -48,13 +48,8 @@ def process_query_with_rag(rag_system, user_input, memories, chat_history):
 
     prompt = create_system_prompt(user_input, chat_history, context, memories)
 
-    response = rag_system["llm"].generate_response(prompt)
 
-    def response_generator():
-        for chunk in stream_response(response):
-            yield chunk
-
-    return response_generator(), reranked_docs
+    return prompt, reranked_docs
 
 
 def get_chat_history(chat_history=None):
@@ -124,13 +119,18 @@ def get_retrieval_permission(user_input, chat_history):
 
     return response.json()["content"][0]["text"].strip()
 
+def generate_llm_response(prompt):
+    from openai import OpenAI
+    from openai.types.responses import ResponseTextDeltaEvent
 
-def stream_response(response, delay=0.01, chunk_size=3):
-    import time
-    for i in range(0, len(response), chunk_size):
-        yield response[i:i + chunk_size]
-        time.sleep(delay)
+    client = OpenAI()
+    messages = [{"role": "user", "content": prompt}]
 
+    response = client.responses.create(model="gpt-4.1", input=messages, stream=True)
+
+    for event in response:
+        if isinstance(event, ResponseTextDeltaEvent):
+            yield event.delta
 
 def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
@@ -155,63 +155,47 @@ def main():
         chat_history = get_chat_history()
         retrieval = get_retrieval_permission(user_input, chat_history)
 
-        # Create a placeholder for the streaming response
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
-
         if user_input.lower() in user_greetings:
-            response = (
+            full_response = (
                 "Namaste, beta! How wonderful to hear from you. What can Grandma help you with today? "
                 "I have so many ancient remedies passed down through generations, "
                 "I'm sure we can find something to soothe your woes!"
             )
             reranked_docs = []
 
-            # Stream the greeting response
-            for chunk in stream_response(response):
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-
         elif retrieval == "No":
-            response = ("Oh dear, Grandma's always happy to help with your aches, sniffles, and remedies passed down "
+            full_response = ("Oh dear, Grandma's always happy to help with your aches, sniffles, and remedies passed down "
                         "through the years. But when it comes to things outside of health—like rockets, robots, or"
                         " riddles—I'm afraid this old mind doesn't stretch quite that far! Now, if you've got a health "
                         "worry or a home remedy question, come sit beside me and ask away.")
             reranked_docs = []
-
-            # Stream the non-retrieval response
-            for chunk in stream_response(response):
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-
         else:
             st.session_state.memories.append(user_input)
 
-            response_generator, reranked_docs = process_query_with_rag(
+            prompt, reranked_docs = process_query_with_rag(
                 rag_system,
                 user_input,
                 st.session_state.memories,
                 chat_history
             )
+            full_response = ""
 
-            for chunk in response_generator:
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
 
-            response = full_response
+                for chunk in generate_llm_response(prompt):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+                message_placeholder.markdown(full_response)
 
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
         if reranked_docs:
             with st.spinner("Evaluating response quality..."):
                 evaluation_result = evaluate_response(
                     rag_system=rag_system,
                     reranked_docs=reranked_docs,
-                    response=response,
+                    response=full_response,
                     user_input=user_input
                 )
 
@@ -226,7 +210,6 @@ def main():
                         "Context Relevance": round(scores["nv_context_relevance"], 3),
                     }
                 )
-
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
 
 if __name__ == "__main__":

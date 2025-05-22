@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import tiktoken
 from typing import List
 from langchain.schema import Document
 from langchain_community.document_loaders import WebBaseLoader
@@ -94,15 +95,19 @@ class ManualChunker:
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.encoding = tiktoken.get_encoding("cl100k_base")
 
     def chunk_text(self, text: str) -> List[str]:
+        # Tokenize the text
+        tokens = self.encoding.encode(text)
         chunks = []
         start = 0
-        text_length = len(text)
+        total_tokens = len(tokens)
 
-        while start < text_length:
+        while start < total_tokens:
             end = start + self.chunk_size
-            chunks.append(text[start:end])
+            chunk_tokens = tokens[start:end]
+            chunks.append(self.encoding.decode(chunk_tokens))
             start += self.chunk_size - self.chunk_overlap
 
         return chunks
@@ -139,6 +144,10 @@ class SemanticChunker:
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.encoding = tiktoken.get_encoding("cl100k_base")
+
+    def _token_length(self, text: str) -> int:
+        return len(self.encoding.encode(text))
 
     def chunk_text(self, text: str) -> List[str]:
         from flair.splitter import SegtokSentenceSplitter
@@ -155,7 +164,7 @@ class SemanticChunker:
 
         for sentence in sentences:
             sentence_str = sentence.to_plain_string()
-            if len(current_chunk) + len(sentence_str) <= self.chunk_size:
+            if self._token_length(current_chunk) + self._token_length(sentence_str) <= self.chunk_size:
                 current_chunk += " " + sentence_str
             else:
                 chunks.append(current_chunk.strip())

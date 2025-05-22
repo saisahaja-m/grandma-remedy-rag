@@ -7,7 +7,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 
 def get_llm_model():
-    model_config = LLM_MODELS["claude"]
+    model_config = LLM_MODELS["openai"]
     model_type = model_config["type"]
 
     if model_type == LLMTypesEnum.GeminiLLM.value:

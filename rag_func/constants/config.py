@@ -211,7 +211,7 @@ ACTIVE_CONFIG = {
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.RagasEvaluator.value,
     "reranking": RerankingTypesEnum.Groq.value,
-    "chunking": ChunkingTypeEnum.Semantic.value
+    "chunking": ChunkingTypeEnum.Manual.value
 }
 
 user_greetings = [
