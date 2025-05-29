@@ -1,9 +1,10 @@
-import argparse
 import json
+import argparse
 import pandas as pd
 from dotenv import load_dotenv
 from typing import List, Dict, Any, Tuple
 from tqdm import tqdm
+import time
 from rag_func.core.data_processing import load_and_process_documents
 from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
@@ -32,30 +33,53 @@ def initialize_rag_system():
 
 
 def process_query_with_rag(rag_system, user_input, chat_history="") -> Tuple[str, List]:
+    # Retrieval
+    start_time_retrieval = time.time()
     relevant_docs = rag_system["retriever"].invoke(user_input)
+    end_time_retrieval = time.time()
+    print(f"Time taken for retrieval: {end_time_retrieval - start_time_retrieval:.4f} seconds")
     docs = [doc for doc in relevant_docs if hasattr(doc, "page_content") and doc.page_content.strip()]
 
     if not docs:
         return "I'm sorry, I don't have specific information about that.", []
 
+    # Reranking
+    start_time_reranking = time.time()
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
+    end_time_reranking = time.time()
+    print(f"Time taken for reranking: {end_time_reranking - start_time_reranking:.4f} seconds")
     context = format_context_from_docs(reranked_docs)
     memories = []
 
     prompt = create_system_prompt(user_input, chat_history, context, memories)
+    # Generation
+    start_time_generation = time.time()
     response = rag_system["llm"].generate_response(prompt)
+    end_time_generation = time.time()
+    print(f"Time taken for generation: {end_time_generation - start_time_generation:.4f} seconds")
 
     return response, reranked_docs
 
 
-def evaluate_response(rag_system, user_input, response, reranked_docs):
+def evaluate_response(rag_system, user_input, response, reranked_docs, ground_truth):
     context_docs = [doc.page_content for doc in reranked_docs]
 
     evaluation_result = rag_system["evaluator"].evaluate(
-        user_input, response, context_docs
+        user_input, response, context_docs, ground_truth
     )
 
-    return evaluation_result
+    test_result = evaluation_result.test_results[0]
+    metrics_data = test_result.metrics_data
+
+    scores_dict = {}
+    for metric in metrics_data:
+        key = metric.name.lower().replace(' ', '_')
+        scores_dict[key] = {
+            "score": round(metric.score, 3),
+            "reason": metric.reason
+        }
+
+    return scores_dict
 
 
 def load_questions_and_ground_truths(filepath: str) -> List[Dict[str, str]]:
@@ -69,16 +93,15 @@ def load_questions_and_ground_truths(filepath: str) -> List[Dict[str, str]]:
 
 def run_evaluation(active_config: Dict, questions_file: str, output_file: str = None):
     rag_system = initialize_rag_system()
-    eval_result = []
 
     qa_pairs = load_questions_and_ground_truths(questions_file)
     results = {
         "app_config": active_config,
-        "metrics": {
+        "metrics_summary": {
             "faithfulness": [],
             "answer_relevancy": [],
-            "response_groundedness": [],
-            "context_relevance": []
+            "contextual_recall": [],
+            "contextual_relevancy": []
         },
         "questions": []
     }
@@ -90,33 +113,23 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
         answer, reranked_docs = process_query_with_rag(rag_system, question)
 
         if reranked_docs:
-            eval_result = evaluate_response(
+            # Evaluation
+            start_time_evaluation = time.time()
+            scores_dict = evaluate_response(
                 rag_system=rag_system,
                 user_input=question,
                 response=answer,
-                reranked_docs=reranked_docs
+                reranked_docs=reranked_docs,
+                ground_truth=ground_truth
             )
-
-            test_result = eval_result.test_results[0]
-            metrics_data = test_result.metrics_data
-
-            scores_dict = {}
-            for metric in metrics_data:
-                key = metric.name.lower().replace(' ', '_')
-                scores_dict[key] = metric.score
-
-            # Add scores to metrics
-            results["metrics"]["faithfulness"].append(scores_dict.get("faithfulness", 0.0))
-            results["metrics"]["answer_relevancy"].append(scores_dict.get("answer_relevancy", 0.0))
-            results["metrics"]["response_groundedness"].append(scores_dict.get("nv_response_groundedness", 0.0))
-            results["metrics"]["context_relevance"].append(scores_dict.get("nv_context_relevance", 0.0))
+            end_time_evaluation = time.time()
+            print(f"Time taken for evaluation: {end_time_evaluation - start_time_evaluation:.4f} seconds")
         else:
-            # No relevant documents found
             scores_dict = {
-                "faithfulness": 0.0,
-                "answer_relevancy": 0.0,
-                "nv_response_groundedness": 0.0,
-                "nv_context_relevance": 0.0
+                "faithfulness": {"score": 0.0, "reason": "No relevant documents retrieved"},
+                "answer_relevancy": {"score": 0.0, "reason": "No relevant documents retrieved"},
+                "contextual_recall": {"score": 0.0, "reason": "No relevant documents retrieved"},
+                "contextual_relevancy": {"score": 0.0, "reason": "No relevant documents retrieved"}
             }
 
         # Add question, answer, and scores to results
@@ -124,26 +137,24 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
             "question": question,
             "ground_truth": ground_truth,
             "generated_answer": answer,
-            "scores": {
-                "faithfulness": scores_dict.get("faithfulness", 0.0),
-                "answer_relevancy": scores_dict.get("answer_relevancy", 0.0),
-                "response_groundedness": scores_dict.get("nv_response_groundedness", 0.0),
-                "context_relevance": scores_dict.get("nv_context_relevance", 0.0)
-            }
+            "scores": scores_dict
         })
 
-    # Calculate average scores
-    for metric in results["metrics"]:
-        if results["metrics"][metric]:
-            results["metrics"][metric] = round(sum(results["metrics"][metric]) / len(results["metrics"][metric]), 3)
-        else:
-            results["metrics"][metric] = 0.0
+        # Collect scores for summary
+        for metric in results["metrics_summary"]:
+            results["metrics_summary"][metric].append(scores_dict[metric]["score"])
+
+    # Calculate average scores for metrics summary
+    for metric in results["metrics_summary"]:
+        scores = results["metrics_summary"][metric]
+        results["metrics_summary"][metric] = {
+            "average_score": round(sum(scores) / len(scores), 3) if scores else 0.0,
+            "num_evaluations": len(scores)
+        }
 
     if output_file:
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
-        with open(output_file, 'w') as f:
-            json.dump(eval_result, f, indent=2)
         print(f"Results saved to {output_file}")
 
     return results

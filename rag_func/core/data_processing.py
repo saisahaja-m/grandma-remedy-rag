@@ -5,7 +5,7 @@ import tiktoken
 from typing import List
 from langchain.schema import Document
 from langchain_community.document_loaders import WebBaseLoader
-from rag_func.constants.config import URLS, CHUNKING, ACTIVE_CONFIG
+from rag_func.constants.config import URLS, CHUNKING, ACTIVE_CONFIG, OPENAI_API_KEY
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from rag_func.constants.enums import ChunkingTypeEnum, DocProcessingEnum
@@ -38,6 +38,8 @@ def get_chunking_strategy():
             chunk_size=chunking_config[chunk_size],
             chunk_overlap=chunking_config[chunk_overlap]
         )
+    elif chunking_type == ChunkingTypeEnum.Agentic.value:
+        return AgenticChunker()
     return None
 
 
@@ -174,6 +176,38 @@ class SemanticChunker:
             chunks.append(current_chunk.strip())
 
         return chunks
+
+class AgenticChunker:
+    def __init__(self):
+        pass
+    def chunk_text(self, text):
+        from langchain_openai import ChatOpenAI
+        from langchain.prompts import PromptTemplate
+        llm = ChatOpenAI(model="gpt-4o",
+                         api_key=OPENAI_API_KEY,
+                         verbose=True,
+                         temperature=1)
+        prompt = """I am providing a document below. 
+        Please split the document into chunks that maintain semantic coherence and ensure that each chunk represents a complete and meaningful unit of information. 
+        Each chunk should stand alone, preserving the context and meaning without splitting key ideas across chunks. 
+        Use your understanding of the content's structure, topics, and flow to identify natural breakpoints in the text. 
+        Ensure that no chunk exceeds 1000 characters length, and prioritize keeping related concepts or sections together.
+
+        Do not modify the document, just split to chunks and return them as an array of strings, where each string is one chunk of the document.
+        Return the entire book not dont stop in betweek some sentences.
+
+        Document:
+        {document}
+        """
+
+        prompt_template = PromptTemplate.from_template(prompt)
+
+        chain = prompt_template | llm
+
+        result = chain.invoke({"document": text})
+
+        print(result)
+        return result
 
 def extract_title(content: str) -> str:
     lines = content.split('\n')
