@@ -29,7 +29,6 @@ URLS = [
     "https://www.healthline.com/nutrition/vitamins-for-nails?utm_source=ReadNext"
 ]
 
-# Document processing config
 DOC_PROCESSING = {
     "chunk_size": 700,
     "chunk_overlap": 100
@@ -83,11 +82,11 @@ RETRIEVAL = {
     },
     RetrievalTypesEnum.bm25.value: {
         "type": RetrievalTypesEnum.bm25.value,
-        "k": 20
+        "k": 5
     },
     RetrievalTypesEnum.Semantic.value: {
         "type": "semantic",
-        "k": 20
+        "k": 5
     }
 }
 
@@ -95,18 +94,18 @@ RETRIEVAL = {
 LLM_MODELS = {
     LLMTypesEnum.GeminiLLM.value: {
         "type": LLMTypesEnum.GeminiLLM.value,
-        "model_name": "gemini-2.0-flash-exp",
-        "temperature": 0.2
+        "model_name": "gemini-2.5-pro-preview-05-06",
+        "temperature": 0.0
     },
     LLMTypesEnum.OpenAiLLM.value: {
         "type": LLMTypesEnum.OpenAiLLM.value,
-        "model_name": "gpt-4-turbo",
-        "temperature": 0.2
+        "model_name": "gpt-4.1",
+        "temperature": 0.0
     },
     LLMTypesEnum.ClaudeLLM.value:{
         "type": LLMTypesEnum.ClaudeLLM.value,
-        "model_name": "claude-3-5-sonnet-20240620",
-        "temperature": 0.2
+        "model_name": "claude-sonnet-4-20250514",
+        "temperature": 0.0
     }
 }
 
@@ -131,8 +130,8 @@ RERANKING = {
 CHUNKING = {
     ChunkingTypeEnum.Manual.value: {
         "type": ChunkingTypeEnum.Manual.value,
-        "chunk_size": 700,
-        "chunk_overlap": 100
+        "chunk_size": 300,
+        "chunk_overlap": 75
     },
     ChunkingTypeEnum.SentenceWindow.value: {
         "type": ChunkingTypeEnum.SentenceWindow.value,
@@ -141,16 +140,19 @@ CHUNKING = {
     },
     ChunkingTypeEnum.Recursive.value: {
         "type": ChunkingTypeEnum.Recursive.value,
-        "chunk_size": 1000,
-        "chunk_overlap": 200
+        "chunk_size": 100,
+        "chunk_overlap": 10
     },
     "markdown": {
         "type": "markdown"
     },
     ChunkingTypeEnum.Semantic.value: {
         "type": ChunkingTypeEnum.Semantic.value,
-        "chunk_size": 1000,
-        "chunk_overlap": 200
+        "chunk_size": 100,
+        "chunk_overlap": 15
+    },
+    ChunkingTypeEnum.Agentic.value:{
+        "type": ChunkingTypeEnum.Agentic.value
     }
 }
 
@@ -172,6 +174,9 @@ EVALUATION = {
     EvaluatorTypesEnum.DeepEvalEvaluator.value: {
         "type": EvaluatorTypesEnum.DeepEvalEvaluator.value,
         "model_name": "gpt-4o"
+    },
+    EvaluatorTypesEnum.Custom.value:{
+        "type": EvaluatorTypesEnum.Custom.value
     }
 }
 
@@ -180,37 +185,57 @@ APP_CONFIG = {
     "title": "🌿 Grandma's Remedy RAG",
     "page_icon": "🌿",
     "prompt_template": """
-    You are Grandma Remedy Bot, an expert in Indian home remedies and ayurvedic wisdom.
+    You are *Remedy Assistant Bot*, an AI trained in traditional Indian home remedies and ancient Ayurvedic knowledge. You provide helpful, clear, and accurate responses based strictly on the provided data.
 
-    USER QUERY: "{query}"
-
-    CHAT HISTORY:
+    ---
+    
+    **USER QUERY**:  
+    "{query}"
+    
+    **CHAT HISTORY**:  
     {chat_history}
-
-    RELEVANT REMEDIES:
+    
+    **RELEVANT REMEDIES (Your only source of truth)**:  
     {context}
-
-    MEMORIES:
+    
+    **MEMORIES (Past preferences or important user-specific notes)**:  
     {memories}
+    
+    ---
+    
+    **INSTRUCTIONS**:
+    
+    1. **Use only the RELEVANT REMEDIES section to answer.**  
+       Do **not** create or assume remedies outside the given context.  
+       If no matching remedy is found, respond neutrally:  
+       *"I couldn’t find a suitable remedy for that in the available information. Let me know if you'd like me to try again with more details."*
+    
+    2. **STRICT RULE**:  
+       NEVER suggest ingredients listed in the user's dislikes or allergies (from the MEMORIES section).  
+       Cross-check each suggestion before responding.
+    
+    3. **Tone & Style**:  
+       - Use a neutral, professional, and informative tone.  
+       - Avoid emotional or affectionate language.
+    
+    4. **Credibility**:  
+       - Remedies should be grounded in established sources like *Charaka Samhita*, *Bhavaprakasha*, or commonly accepted traditional practices.  
+       - You may reference these where applicable, e.g., *"This is also found in Charaka Samhita."*
+    ---
+    
+    Your priority is to provide reliable, user-aware, and context-accurate remedy suggestions.
 
-    INSTRUCTIONS:
-        1. Answer **only** questions related to health, wellness, or the human body.
-        2. **CRITICAL: NEVER suggest ingredients that the user has expressed dislike for in USER PREFERENCES**. If they've said they don't like an ingredient, do not recommend it in any form.
-        3. Always be warm, loving, and nurturing—use affectionate terms like *beta* or *baccha* when appropriate.
-        4. Never make up remedies. Your advice should be based on trustworthy sources such as Ayurvedic books, recognized wellness websites, or traditionally known practices.
-        5. Back up your advice with friendly references when possible, e.g., "This is mentioned in the Charaka Samhita, beta."
-        6. Avoid making exaggerated claims—let the natural power of the remedies speak for themselves.
     """
 }
 
 # Active configuration using enums
 ACTIVE_CONFIG = {
-    "embedding": EmbeddingsTypeEnum.HuggingFace.value,
+    "embedding": EmbeddingsTypeEnum.Voyageai.value,
     "vector_store": VectorStoresEnum.Faiss.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
-    "reranking": RerankingTypesEnum.Groq.value,
+    "reranking": RerankingTypesEnum.Jina.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }
 

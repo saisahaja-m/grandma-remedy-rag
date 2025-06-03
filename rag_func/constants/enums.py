@@ -17,6 +17,7 @@ class ChunkingTypeEnum(Enum):
     SentenceWindow = "sentence_window"
     Recursive = "recursive"
     Semantic = "semantic"
+    Agentic = "agentic"
 
 
 class DocProcessingEnum(Enum):
@@ -34,6 +35,7 @@ class EvaluatorTypesEnum(Enum):
     RagasEvaluator = "ragas"
     TrulensEvaluator = "trulens"
     DeepEvalEvaluator = "deepeval"
+    Custom = "custom"
 
 
 class EvaluatingMetricsEnum(Enum):
@@ -42,6 +44,7 @@ class EvaluatingMetricsEnum(Enum):
     Groundedness = "groundedness"
     ContextRelevance = "context_relevance"
     Correctness = "correctness"
+    ContextRecall = "context_recall"
 
 
 class VectorStoresEnum(Enum):

@@ -165,6 +165,85 @@ def classify_query_with_claude_functions(customised_prompt: str):
 
     return result
 
+def classify_query_with_gemini_functions(customised_prompt: str):
+    from google import genai
+    from google.genai import types
+    from task_tracking.constants import add_task, get_all_tasks, delete_task, update_task, GEMINI_API_KEY
+
+    task_tracker = TaskTracker()
+
+    tools = types.Tool(function_declarations=[add_task, get_all_tasks, delete_task, update_task])
+    tool_config = types.ToolConfig(
+        function_calling_config=types.FunctionCallingConfig(
+            mode="ANY", allowed_function_names=["add_task", "get_all_tasks", "delete_task", "update_task"]
+        )
+    )
+
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        tools=[tools],
+        tool_config=tool_config
+    )
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    contents = [
+        types.Content(role="user", parts=[types.Part(text=customised_prompt)])
+    ]
+    response = client.models.generate_content(model="gemini-2.0-flash", config=config, contents=contents)
+
+    function_call = response.candidates[0].content.parts[0].function_call
+
+    function_name = function_call.name
+    tool_call_id = function_call.id
+    args = function_call.args
+
+    result_from_tool_execution = None
+
+    if function_name == "get_all_tasks":
+        result_from_tool_execution = task_tracker.format_tasks()
+
+    elif function_name == "add_task":
+        description = args.get("description")
+        task_id = task_tracker.add_task(description)
+        result_from_tool_execution = f"Task '{description}' (ID: {task_id}) has been successfully added."
+
+    elif function_name == "update_task":
+        task_id = args.get("task_id")
+        new_description = args.get("new_description")
+        new_status = args.get("new_status")
+        if task_tracker.update_task(task_id, new_description, new_status):
+            update_details = []
+            if new_description:
+                update_details.append(f"description to '{new_description}'")
+            if new_status:
+                update_details.append(f"status to '{new_status}'")
+            result_from_tool_execution = f"Task ID {task_id} has been updated: {', '.join(update_details)}."
+        else:
+            result_from_tool_execution = f"Could not find or update task with ID {task_id}."
+
+    elif function_name == "delete_task":
+        task_id = args.get("task_id")
+        if task_tracker.delete_task(task_id):
+            result_from_tool_execution = f"Task ID {task_id} has been successfully deleted."
+        else:
+            result_from_tool_execution = f"Could not find or delete task with ID {task_id}."
+
+    function_response_part = types.Part.from_function_response(
+        name=function_call.name,
+        response={"result": result_from_tool_execution},
+    )
+
+    contents.append(types.Content(role="model", parts=[types.Part(function_call=function_call)]))
+    contents.append(types.Content(role="user", parts=[function_response_part]))
+
+    final_response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=contents
+    )
+
+    return final_response.text
+
+
 
 
 

@@ -1,12 +1,11 @@
 import uuid
-from langchain_community.vectorstores import Chroma
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma, FAISS, Annoy
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
+from langchain_core.vectorstores import VectorStoreRetriever
 from rag_func.core.embedding import get_embedding_model
 from rag_func.constants.config import RETRIEVAL, VECTOR_STORES, ACTIVE_CONFIG
 from rag_func.constants.enums import VectorStoresEnum, RetrievalTypesEnum
-from langchain_community.vectorstores import Annoy
 
 
 def create_vector_store(docs):
@@ -16,11 +15,10 @@ def create_vector_store(docs):
 
     if vector_store_type == VectorStoresEnum.Faiss.value:
         return FAISS.from_documents(docs, embedding_model)
-
     elif vector_store_type == VectorStoresEnum.Chroma.value:
         return Chroma.from_documents(docs, embedding_model)
     elif vector_store_type == VectorStoresEnum.Annoy.value:
-        return AnnoyVectorStore(docs, embeddings=embedding_model)
+        return Annoy.from_documents(docs, embedding_model)
     return None
 
 
@@ -31,7 +29,7 @@ def get_retriever(docs):
 
     if retrieval_type == RetrievalTypesEnum.Vector.value:
         vector_store = create_vector_store(docs)
-        return vector_store.as_retriever(search_kwargs={"k": k})
+        return VectorStoreRetriever(vectorstore=vector_store, search_kwargs={"k": k})
 
     elif retrieval_type == RetrievalTypesEnum.bm25.value:
         bm25_retriever = BM25Retriever.from_documents(docs)
@@ -43,133 +41,41 @@ def get_retriever(docs):
         bm25_retriever.k = k
 
         vector_store = create_vector_store(docs)
-        vector_retriever = vector_store.as_retriever(search_kwargs={"k": k})
+        vector_retriever = VectorStoreRetriever(vectorstore=vector_store, search_kwargs={"k": k})
 
         weights = retrieval_config.get("weights", [0.5, 0.5])
         return EnsembleRetriever(
             retrievers=[bm25_retriever, vector_retriever],
             weights=weights
         )
+    elif retrieval_type == RetrievalTypesEnum.Semantic.value:
+        vector_store = create_vector_store(docs)
+        similarity_threshold = retrieval_config.get("similarity_threshold", 0.0)
+        return SemanticRetriever(vector_store=vector_store, k=k, similarity_threshold=similarity_threshold)
+
     return None
 
 
-# class ChromaVectorStore:
-#     def __init__(self, documents, embeddings):
-#         self._client = Chroma.Client()
-#         self._collection_name = "collection_" + uuid.uuid4().hex[:8]
-#         self._collection = self._client.create_collection(name=self._collection_name)
-#         self._id_to_doc: Dict[str, str] = {}
-#         self.documents = documents
-#         self.embeddings = embeddings
-#
-#     def add_documents(self) -> None:
-#         if not self.documents or not self.embeddings:
-#             return
-#
-#         ids = ["doc_" + str(i) for i in range(len(self.documents))]
-#         self._id_to_doc.update({doc_id: doc for doc_id, doc in zip(ids, self.documents)})
-#
-#         self._collection.add(
-#             embeddings=self.embeddings,
-#             documents=self.documents,
-#             ids=ids
-#         )
-#
-#     def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float]]:
-#         if not self._id_to_doc:
-#             return []
-#
-#         available_docs = len(self._id_to_doc)
-#         limit = min(max(1, top_k), available_docs)
-#
-#         results = self._collection.query(
-#             query_embeddings=[query_embedding],
-#             n_results=limit
-#         )
-#
-#         documents = results.get('documents', [[]])[0]
-#         distances = results.get('distances', [[]])[0]
-#
-#         return [(doc, float(dist)) for doc, dist in zip(documents, distances)]
+class SemanticRetriever:
+    def __init__(self, vector_store, k: int, similarity_threshold: float, use_mmr: bool = True,
+                 mmr_diversity_penalty: float = 0.5):
+        self.vector_store = vector_store
+        self.k = k
+        self.similarity_threshold = similarity_threshold
+        self.use_mmr = use_mmr
+        self.mmr_diversity_penalty = mmr_diversity_penalty
 
-
-# class QdrantVectorStore:
-#     def __init__(self, documents, embeddings_model):
-#         host = "localhost"
-#         port = 6333
-#         self.client = QdrantClient(host=host, port=port)
-#
-#         self._collection_name = "collection_" + uuid.uuid4().hex[:8]
-#
-#         self.documents = documents
-#         self.embeddings_model = embeddings_model
-#
-#         self._id_to_doc = {}
-#
-#         if documents and embeddings_model:
-#             texts = [doc.page_content for doc in documents]
-#             self.embeddings = embeddings_model.embed_documents(texts)
-#             vector_size = len(self.embeddings[0])
-#             self.client.create_collection(
-#                 collection_name=self._collection_name,
-#                 vectors_config=VectorParams(
-#                     size=vector_size,
-#                     distance=Distance.COSINE
-#                 )
-#             )
-#             self.add_documents()
-#
-#     def add_documents(self) -> None:
-#         if not self.documents or not self.embeddings:
-#             return
-#
-#         ids = [i for i in range(len(self.documents))]
-#         self._id_to_doc.update({doc_id: doc for doc_id, doc in zip(ids, self.documents)})
-#
-#         points = []
-#         for i, (embedding, document) in enumerate(zip(self.embeddings, self.documents)):
-#             points.append(
-#                 PointStruct(
-#                     id=ids[i],
-#                     vector=embedding,
-#                     payload={"text": document}
-#                 )
-#             )
-#
-#         self.client.upsert(
-#             collection_name=self._collection_name,
-#             points=points
-#         )
-#
-#     def search(self, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float]]:
-#         if not self._id_to_doc:
-#             return []
-#
-#         available_docs = len(self._id_to_doc)
-#         limit = min(max(1, top_k), available_docs)
-#
-#         results = self.client.search(
-#             collection_name=self._collection_name,
-#             query_vector=query_embedding,
-#             limit=limit
-#         )
-#
-#         result_tuples = []
-#         for scored_point in results:
-#             doc_text = scored_point.payload.get("text", "")
-#             distance = scored_point.score
-#             result_tuples.append((doc_text, float(distance)))
-#
-#         return result_tuples
-#
-#
-
-class AnnoyVectorStore:
-    def __init__(self, documents, embeddings):
-        self.documents = documents
-        self.embeddings = embeddings
-
-    def vector_store(self):
-        vector_store = Annoy.from_documents(documents=self.documents, embedding=self.embeddings)
-
-        return vector_store
+    def get_relevant_documents(self, query: str):
+        if self.use_mmr:
+            docs = self.vector_store.max_marginal_relevance_search(
+                query, k=self.k, lambda_mult=1 - self.mmr_diversity_penalty
+            )
+        else:
+            docs_with_scores = self.vector_store.similarity_search_with_score(
+                query, k=self.k * 2
+            )
+            docs = [
+                doc for doc, score in docs_with_scores
+                if score >= self.similarity_threshold
+            ][:self.k]
+        return docs

@@ -1,13 +1,14 @@
 import google.generativeai as genai
 import requests
-from rag_func.constants.config import LLM_MODELS, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, CLAUDE_API_KEY
+from rag_func.constants.config import LLM_MODELS, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, CLAUDE_API_KEY, \
+    ACTIVE_CONFIG
 from rag_func.constants.enums import LLMTypesEnum
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 
 def get_llm_model():
-    model_config = LLM_MODELS["claude"]
+    model_config = LLM_MODELS[ACTIVE_CONFIG["llm"]]
     model_type = model_config["type"]
 
     if model_type == LLMTypesEnum.GeminiLLM.value:
