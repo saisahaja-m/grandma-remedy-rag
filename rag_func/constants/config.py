@@ -95,17 +95,17 @@ LLM_MODELS = {
     LLMTypesEnum.GeminiLLM.value: {
         "type": LLMTypesEnum.GeminiLLM.value,
         "model_name": "gemini-2.5-pro-preview-05-06",
-        "temperature": 0.2
+        "temperature": 0.0
     },
     LLMTypesEnum.OpenAiLLM.value: {
         "type": LLMTypesEnum.OpenAiLLM.value,
-        "model_name": "gpt-4-turbo",
-        "temperature": 0.2
+        "model_name": "gpt-4.1",
+        "temperature": 0.0
     },
     LLMTypesEnum.ClaudeLLM.value:{
         "type": LLMTypesEnum.ClaudeLLM.value,
-        "model_name": "claude-3-5-sonnet-20240620",
-        "temperature": 0.2
+        "model_name": "claude-sonnet-4-20250514",
+        "temperature": 0.0
     }
 }
 
@@ -140,16 +140,16 @@ CHUNKING = {
     },
     ChunkingTypeEnum.Recursive.value: {
         "type": ChunkingTypeEnum.Recursive.value,
-        "chunk_size": 1000,
-        "chunk_overlap": 200
+        "chunk_size": 100,
+        "chunk_overlap": 10
     },
     "markdown": {
         "type": "markdown"
     },
     ChunkingTypeEnum.Semantic.value: {
         "type": ChunkingTypeEnum.Semantic.value,
-        "chunk_size": 300,
-        "chunk_overlap": 75
+        "chunk_size": 100,
+        "chunk_overlap": 15
     },
     ChunkingTypeEnum.Agentic.value:{
         "type": ChunkingTypeEnum.Agentic.value
@@ -221,14 +221,6 @@ APP_CONFIG = {
     4. **Credibility**:  
        - Remedies should be grounded in established sources like *Charaka Samhita*, *Bhavaprakasha*, or commonly accepted traditional practices.  
        - You may reference these where applicable, e.g., *"This is also found in Charaka Samhita."*
-    
-    5. **Be Cautious in Claims**:  
-       - Do not guarantee results.  
-       - Use phrasing like *"This may help reduce symptoms,"* or *"This is traditionally used for relief."*
-    
-    6. **Optional Enhancements**:  
-       - Include preparation instructions, usage timing, or warnings (e.g., *“Avoid on an empty stomach”*) if included in the source.
-    
     ---
     
     Your priority is to provide reliable, user-aware, and context-accurate remedy suggestions.
@@ -238,12 +230,12 @@ APP_CONFIG = {
 
 # Active configuration using enums
 ACTIVE_CONFIG = {
-    "embedding": EmbeddingsTypeEnum.HuggingFace.value,
+    "embedding": EmbeddingsTypeEnum.Voyageai.value,
     "vector_store": VectorStoresEnum.Faiss.value,
     "retrieval": RetrievalTypesEnum.Ensemble.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
-    "reranking": RerankingTypesEnum.Groq.value,
+    "reranking": RerankingTypesEnum.Jina.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }
 

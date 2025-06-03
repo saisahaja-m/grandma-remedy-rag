@@ -44,6 +44,7 @@ class EvaluatingMetricsEnum(Enum):
     Groundedness = "groundedness"
     ContextRelevance = "context_relevance"
     Correctness = "correctness"
+    ContextRecall = "context_recall"
 
 
 class VectorStoresEnum(Enum):

@@ -43,54 +43,87 @@ def get_chunking_strategy():
     return None
 
 
+def extract_title_from_text(content: str, fallback_title: str = "Remedy Information") -> str:
+    lines = content.split('\n')
+    potential_titles = []
+    for line in lines[:5]:
+        cleaned_line = line.strip()
+        if 10 < len(cleaned_line) < 150 and \
+                not cleaned_line.lower().startswith(('http:', 'https:')) and \
+                not any(kw in cleaned_line.lower() for kw in [
+                    'cookie', 'privacy', 'terms', 'copyright', 'navigation', 'advertisement',
+                    'subscribe', 'follow us', 'home', 'about', 'contact', 'skip to content',
+                    'search', 'login', 'register', '©', 'rights reserved', 'menu', '|', '•', '»'
+                ]) and \
+                sum(c.isalpha() for c in cleaned_line) / (len(cleaned_line) + 1e-5) > 0.6:
+            potential_titles.append(cleaned_line)
+
+    if potential_titles:
+        potential_titles.sort(key=len)
+        return potential_titles[0]
+    return fallback_title
+
+
 def load_and_process_documents() -> List[Document]:
     chunking_strategy = get_chunking_strategy()
+    all_prepared_documents = []
 
-    loader = WebBaseLoader(URLS)
-    web_docs = loader.load()
-    clean_web_docs = []
+    web_data_path = os.path.join("rag_func", "data", "web_data")
+    if os.path.exists(web_data_path):
+        with open(web_data_path, "r", encoding="utf-8") as file:
+            web_data_content = file.read().strip()
 
-    for doc in web_docs:
-        content = doc.page_content
-        content = re.sub(r'(cookie|privacy|terms|copyright|navigation).*?\n', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'advertisement.*?\n', '', content, flags=re.IGNORECASE)
+        if web_data_content and len(web_data_content.split()) >= 15:
+            title = extract_title_from_text(web_data_content, fallback_title="Ayurvedic Remedies")
+            all_prepared_documents.append(Document(
+                page_content=web_data_content,
+                metadata={
+                    "source": "web_data_file",
+                    "title": title,
+                    "verified": False
+                }
+            ))
 
-        clean_doc = Document(
-            page_content=content,
-            metadata={
-                "source": doc.metadata.get("source"),
-                "title": extract_title(content),
-                "verified": True
-            }
-        )
-        clean_web_docs.append(clean_doc)
+    json_path = os.path.join("rag_func", "data", "remidies.json")
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as file:
+            remedy_data = json.load(file)
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-    json_path = os.path.join(parent_dir, "data", "remidies.json")
+        for entry_idx, entry in enumerate(remedy_data):
+            json_content = entry.get("content", "").strip()
+            if not json_content or len(json_content.split()) < 5:
+                continue
 
-    with open(json_path, "r") as file:
-        remedy_data = json.load(file)
+            json_title = entry.get("title", "").strip()
+            if json_title and len(json_title) > 5 and \
+                    not any(kw in json_title.lower() for kw in ['untitled', 'error', 'just a moment', 'loading']):
+                title = json_title
+            else:
+                title = extract_title_from_text(json_content, fallback_title=f"Custom Remedy {entry_idx + 1}")
 
-    remedy_docs = [
-        Document(
-            page_content=entry["content"],
-            metadata={
-                "source": "custom_remedies",
-                "title": entry["title"],
-                "verified": entry.get("verified", False)
-            }
-        ) for entry in remedy_data
-    ]
+            if json_content:
+                all_prepared_documents.append(Document(
+                    page_content=json_content,
+                    metadata={
+                        "source": "custom_remedies_json",
+                        "title": title,
+                        "verified": entry.get("verified", False)
+                    }
+                ))
 
-    all_docs = []
+    final_document_chunks = []
+    if chunking_strategy:
+        for i, doc in enumerate(all_prepared_documents):
+            if not doc.page_content.strip():
+                continue
 
-    for doc in clean_web_docs + remedy_docs:
-        chunks = chunking_strategy.chunk_text(doc.page_content)
-        for chunk in chunks:
-            all_docs.append(Document(page_content=chunk, metadata=doc.metadata))
+            chunks = chunking_strategy.chunk_text(doc.page_content)
+            for chunk_idx, chunk_content in enumerate(chunks):
+                if chunk_content.strip():
+                    chunk_metadata = doc.metadata.copy()
+                    final_document_chunks.append(Document(page_content=chunk_content, metadata=chunk_metadata))
 
-    return all_docs
+    return final_document_chunks
 
 
 class ManualChunker:
@@ -208,10 +241,3 @@ class AgenticChunker:
 
         print(result)
         return result
-
-def extract_title(content: str) -> str:
-    lines = content.split('\n')
-    for line in lines[:5]:
-        if len(line) > 10 and len(line) < 100 and not line.startswith('http'):
-            return line.strip()
-    return "Remedy Information"

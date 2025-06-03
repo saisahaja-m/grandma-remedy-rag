@@ -65,21 +65,10 @@ def evaluate_response(rag_system, user_input, response, reranked_docs, ground_tr
     context_docs = [doc.page_content for doc in reranked_docs]
 
     evaluation_result = rag_system["evaluator"].evaluate(
-        user_input, response, context_docs, ground_truth
+        user_input, response, context_docs, [ground_truth]
     )
 
-    test_result = evaluation_result.test_results[0]
-    metrics_data = test_result.metrics_data
-
-    scores_dict = {}
-    for metric in metrics_data:
-        key = metric.name.lower().replace(' ', '_')
-        scores_dict[key] = {
-            "score": round(metric.score, 3),
-            "reason": metric.reason
-        }
-
-    return scores_dict
+    return evaluation_result
 
 
 def load_questions_and_ground_truths(filepath: str) -> List[Dict[str, str]]:
@@ -97,11 +86,11 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
     qa_pairs = load_questions_and_ground_truths(questions_file)
     results = {
         "app_config": active_config,
-        "metrics_summary": {
+        "metrics": {
             "faithfulness": [],
             "answer_relevancy": [],
-            "contextual_recall": [],
-            "contextual_relevancy": []
+            "response_groundedness": [],
+            "context_relevance": []
         },
         "questions": []
     }
@@ -113,23 +102,28 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
         answer, reranked_docs = process_query_with_rag(rag_system, question)
 
         if reranked_docs:
-            # Evaluation
-            start_time_evaluation = time.time()
-            scores_dict = evaluate_response(
+            eval_result = evaluate_response(
                 rag_system=rag_system,
                 user_input=question,
                 response=answer,
                 reranked_docs=reranked_docs,
                 ground_truth=ground_truth
             )
-            end_time_evaluation = time.time()
-            print(f"Time taken for evaluation: {end_time_evaluation - start_time_evaluation:.4f} seconds")
+
+            scores = eval_result.scores[0]
+
+            # Add scores to metrics
+            results["metrics"]["faithfulness"].append(scores["faithfulness"])
+            results["metrics"]["answer_relevancy"].append(scores["answer_relevancy"])
+            results["metrics"]["response_groundedness"].append(scores["nv_response_groundedness"])
+            results["metrics"]["context_relevance"].append(scores["nv_context_relevance"])
         else:
-            scores_dict = {
-                "faithfulness": {"score": 0.0, "reason": "No relevant documents retrieved"},
-                "answer_relevancy": {"score": 0.0, "reason": "No relevant documents retrieved"},
-                "contextual_recall": {"score": 0.0, "reason": "No relevant documents retrieved"},
-                "contextual_relevancy": {"score": 0.0, "reason": "No relevant documents retrieved"}
+            # No relevant documents found
+            scores = {
+                "faithfulness": 0.0,
+                "answer_relevancy": 0.0,
+                "nv_response_groundedness": 0.0,
+                "nv_context_relevance": 0.0
             }
 
         # Add question, answer, and scores to results
@@ -137,20 +131,19 @@ def run_evaluation(active_config: Dict, questions_file: str, output_file: str = 
             "question": question,
             "ground_truth": ground_truth,
             "generated_answer": answer,
-            "scores": scores_dict
+            "scores": {
+                "faithfulness": scores["faithfulness"],
+                "answer_relevancy": scores["answer_relevancy"],
+                "response_groundedness": scores["nv_response_groundedness"],
+                "context_relevance": scores["nv_context_relevance"]
+            }
         })
 
-        # Collect scores for summary
-        for metric in results["metrics_summary"]:
-            results["metrics_summary"][metric].append(scores_dict[metric]["score"])
-
-    # Calculate average scores for metrics summary
-    for metric in results["metrics_summary"]:
-        scores = results["metrics_summary"][metric]
-        results["metrics_summary"][metric] = {
-            "average_score": round(sum(scores) / len(scores), 3) if scores else 0.0,
-            "num_evaluations": len(scores)
-        }
+    for metric in results["metrics"]:
+        if results["metrics"][metric]:
+            results["metrics"][metric] = sum(results["metrics"][metric]) / len(results["metrics"][metric])
+        else:
+            results["metrics"][metric] = 0.0
 
     if output_file:
         with open(output_file, 'w') as f:

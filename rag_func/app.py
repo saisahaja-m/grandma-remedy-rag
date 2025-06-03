@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 from dotenv import load_dotenv
 import pandas as pd
 from rag_func.core.data_processing import load_and_process_documents
@@ -7,8 +6,9 @@ from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
 from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
-from rag_func.utils.helpers import format_chat_history, format_context_from_docs, create_system_prompt
-from rag_func.constants.config import APP_CONFIG, user_greetings, CLAUDE_API_KEY
+from rag_func.utils.helpers import format_chat_history
+from rag_func.constants.config import APP_CONFIG, CLAUDE_API_KEY, OPENAI_API_KEY
+from rag_func.core.function_calling import RAGAssistantWithFunctions
 
 load_dotenv()
 
@@ -39,24 +39,6 @@ def initialize_rag_system():
         "evaluator": evaluator
     }
 
-def process_query_with_rag(rag_system, user_input, memories, chat_history):
-    relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
-    docs = [doc for doc in relevant_docs if doc.page_content.strip()]
-
-    reranked_docs = rag_system["reranker"].rerank(user_input, docs)
-    context = format_context_from_docs(reranked_docs)
-
-    prompt = create_system_prompt(user_input, chat_history, context, memories)
-
-    response = rag_system["llm"].generate_response(prompt)
-
-    def response_generator():
-        for chunk in stream_response(response):
-            yield chunk
-
-    return response_generator(), reranked_docs
-
-
 def get_chat_history(chat_history=None):
     if chat_history is None:
         try:
@@ -70,11 +52,6 @@ def get_chat_history(chat_history=None):
 
 def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
-    ground_truth = get_ground_truth_for_question(user_input)
-
-    if "Ground truth not found" in ground_truth:
-        return {"note": "Ground truth not found; evaluation skipped."}
-
     expected_output = "Triphala works by acting as a mild laxative, stimulating bowel movements, and supporting digestion with its anti-inflammatory and antioxidant properties."
 
     evaluation_result = rag_system["evaluator"].evaluate(
@@ -88,56 +65,12 @@ def display_chat_history():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-
-def get_retrieval_permission(user_input, chat_history):
-    prompt = (
-        "You are a strict classifier trained to identify whether a user input is related to health topics. "
-        "Your task is to analyze the input and determine if it pertains to health, medicine, wellness, medical conditions, "
-        "home remedies, any health-related concerns or something from chat history. "
-        "Respond with ONLY one word: "
-        "- Respond 'Yes' if the input is related to any health or wellness topic. "
-        "- Respond 'No' if it is unrelated to health. "
-        "Do NOT provide any explanations, context, punctuation, or additional words. "
-        f"Input: {user_input}"
-        f"Chat History: {chat_history}"
-    )
-
-    headers = {
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-    }
-
-    data = {
-        "model": "claude-3-5-sonnet-20240620",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.0,
-        "max_tokens": 4096
-    }
-
-    response = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers=headers,
-        json=data
-    )
-
-    if response.status_code != 200:
-        raise Exception(f"Error from Claude API: {response.text}")
-
-    return response.json()["content"][0]["text"].strip()
-
-
-def stream_response(response, delay=0.01, chunk_size=3):
-    import time
-    for i in range(0, len(response), chunk_size):
-        yield response[i:i + chunk_size]
-        time.sleep(delay)
-
-
 def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
     st.title(APP_CONFIG["title"])
     rag_system = initialize_rag_system()
+
+    assistant = RAGAssistantWithFunctions(openai_api_key=OPENAI_API_KEY, rag_system=rag_system)
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -154,54 +87,13 @@ def main():
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        chat_history = get_chat_history()
-        retrieval = get_retrieval_permission(user_input, chat_history)
-
         with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
 
-        if user_input.lower() in user_greetings:
-            response = (
-                "Namaste, beta! How wonderful to hear from you. What can Grandma help you with today? "
-                "I have so many ancient remedies passed down through generations, "
-                "I'm sure we can find something to soothe your woes!"
+            response, reranked_docs = assistant.classify_and_handle_query(
+                user_input=user_input,
+                memories=st.session_state.memories,
+                chat_history=st.session_state.messages
             )
-            reranked_docs = []
-
-            for chunk in stream_response(response):
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-
-        elif retrieval == "No":
-            response = ("Oh dear, Grandma's always happy to help with your aches, sniffles, and remedies passed down "
-                        "through the years. But when it comes to things outside of health—like rockets, robots, or"
-                        " riddles—I'm afraid this old mind doesn't stretch quite that far! Now, if you've got a health "
-                        "worry or a home remedy question, come sit beside me and ask away.")
-            reranked_docs = []
-
-            for chunk in stream_response(response):
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-
-        else:
-            st.session_state.memories.append(user_input)
-
-            response_generator, reranked_docs = process_query_with_rag(
-                rag_system,
-                user_input,
-                st.session_state.memories,
-                chat_history
-            )
-
-            for chunk in response_generator:
-                full_response += chunk
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-
-            response = full_response
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -214,26 +106,27 @@ def main():
                     user_input=user_input
                 )
 
-                test_result = evaluation_result.test_results[0]
-                metrics_data = test_result.metrics_data
+                if "note" not in evaluation_result:
+                    test_result = evaluation_result.test_results[0]
+                    metrics_data = test_result.metrics_data
 
-                scores_dict = {}
-                for metric in metrics_data:
-                    key = metric.name.lower().replace(' ', '_')
-                    scores_dict[key] = metric.score
+                    scores_dict = {}
+                    for metric in metrics_data:
+                        key = metric.name.lower().replace(' ', '_')
+                        scores_dict[key] = metric.score
 
+                    st.subheader("Evaluation Metrics")
+                    st.write(
+                        {
+                            "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
+                            "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
+                            "Context Recall": round(scores_dict.get("contextual_recall", 0), 3),
+                            "Context Relevance": round(scores_dict.get("contextual_relevancy", 0), 3),
+                        }
+                    )
 
-                st.subheader("Evaluation Metrics")
-
-                st.write(
-                    {
-                        "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
-                        "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
-                        "Context Recall": round(scores_dict.get("contextual_recall", 0), 3),
-                        "Context Relevance": round(scores_dict.get("contextual_relevancy", 0), 3),
-                    }
-                )
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
+
 
 if __name__ == "__main__":
     main()
