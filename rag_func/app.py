@@ -6,8 +6,7 @@ from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
 from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
-from rag_func.utils.helpers import format_chat_history
-from rag_func.constants.config import APP_CONFIG, CLAUDE_API_KEY, OPENAI_API_KEY
+from rag_func.constants.config import APP_CONFIG, OPENAI_API_KEY
 from rag_func.core.function_calling import RAGAssistantWithFunctions
 
 load_dotenv()
@@ -39,21 +38,9 @@ def initialize_rag_system():
         "evaluator": evaluator
     }
 
-def get_chat_history(chat_history=None):
-    if chat_history is None:
-        try:
-            if hasattr(st, 'session_state') and hasattr(st.session_state, 'messages'):
-                chat_history = format_chat_history(st.session_state.messages[:-1])
-            else:
-                chat_history = ""
-        except:
-            chat_history = ""
-    return chat_history
-
 def evaluate_response(rag_system, reranked_docs, user_input, response):
     context_docs = [doc.page_content for doc in reranked_docs]
-    expected_output = "Triphala works by acting as a mild laxative, stimulating bowel movements, and supporting digestion with its anti-inflammatory and antioxidant properties."
-
+    expected_output = ""
     evaluation_result = rag_system["evaluator"].evaluate(
         question=user_input, answer=response, retrieved_context=context_docs, expected_output=expected_output
     )
@@ -94,36 +81,37 @@ def main():
                 memories=st.session_state.memories,
                 chat_history=st.session_state.messages
             )
+            st.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-        if reranked_docs:
-            with st.spinner("Evaluating response quality..."):
-                evaluation_result = evaluate_response(
-                    rag_system=rag_system,
-                    reranked_docs=reranked_docs,
-                    response=response,
-                    user_input=user_input
-                )
-
-                if "note" not in evaluation_result:
-                    test_result = evaluation_result.test_results[0]
-                    metrics_data = test_result.metrics_data
-
-                    scores_dict = {}
-                    for metric in metrics_data:
-                        key = metric.name.lower().replace(' ', '_')
-                        scores_dict[key] = metric.score
-
-                    st.subheader("Evaluation Metrics")
-                    st.write(
-                        {
-                            "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
-                            "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
-                            "Context Recall": round(scores_dict.get("contextual_recall", 0), 3),
-                            "Context Relevance": round(scores_dict.get("contextual_relevancy", 0), 3),
-                        }
-                    )
+        # if reranked_docs:
+        #     with st.spinner("Evaluating response quality..."):
+        #         evaluation_result = evaluate_response(
+        #             rag_system=rag_system,
+        #             reranked_docs=reranked_docs,
+        #             response=response,
+        #             user_input=user_input
+        #         )
+        #
+        #         if "note" not in evaluation_result:
+        #             test_result = evaluation_result.test_results[0]
+        #             metrics_data = test_result.metrics_data
+        #
+        #             scores_dict = {}
+        #             for metric in metrics_data:
+        #                 key = metric.name.lower().replace(' ', '_')
+        #                 scores_dict[key] = metric.score
+        #
+        #             st.subheader("Evaluation Metrics")
+        #             st.write(
+        #                 {
+        #                     "Faithfulness": round(scores_dict.get("faithfulness", 0), 3),
+        #                     "Answer Relevancy": round(scores_dict.get("answer_relevancy", 0), 3),
+        #                     "Context Recall": round(scores_dict.get("contextual_recall", 0), 3),
+        #                     "Context Relevance": round(scores_dict.get("contextual_relevancy", 0), 3),
+        #                 }
+        #             )
 
         st.markdown("*Grandma's secrets, unlocked by Sahaja.*")
 
