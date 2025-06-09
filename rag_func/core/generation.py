@@ -1,10 +1,15 @@
 import google.generativeai as genai
-import requests
-from rag_func.constants.config import LLM_MODELS, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, CLAUDE_API_KEY, \
-    ACTIVE_CONFIG
+import os
+from rag_func.constants.config import LLM_MODELS, ACTIVE_CONFIG
 from rag_func.constants.enums import LLMTypesEnum
+from anthropic import Anthropic
+from openai import OpenAI
+from groq import Groq
+from dotenv import load_dotenv
 
-genai.configure(api_key=GEMINI_API_KEY)
+load_dotenv()
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 def get_llm_model():
@@ -31,8 +36,6 @@ def get_llm_model():
 
 
 class GeminiLLM:
-    """Gemini LLM implementation"""
-
     def __init__(self, model_name, temperature=0.2):
         self.model = genai.GenerativeModel(model_name=model_name)
         self.temperature = temperature
@@ -43,31 +46,18 @@ class GeminiLLM:
 
 
 class OpenAILLM:
-    """OpenAI LLM implementation"""
-
     def __init__(self, model_name, temperature=0.2):
         self.model_name = model_name
         self.temperature = temperature
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def generate_response(self, prompt):
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature
-        }
-
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature
         )
-
-        return response.json()["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
 
 
 class GroqLLM:
@@ -75,26 +65,15 @@ class GroqLLM:
     def __init__(self, model_name, temperature=0.0):
         self.model_name = model_name
         self.temperature = temperature
+        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     def generate_response(self, prompt):
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature
-        }
-
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=data
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature
         )
-
-        return response.json()["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
 
 
 class ClaudeLLM:
@@ -102,28 +81,13 @@ class ClaudeLLM:
     def __init__(self, model_name, temperature=0.0):
         self.model_name = model_name
         self.temperature = temperature
+        self.client = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 
     def generate_response(self, prompt):
-        headers = {
-            "x-api-key": CLAUDE_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
-
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature,
-            "max_tokens": 4096
-        }
-
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=data
+        response = self.client.messages.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature,
+            max_tokens=4096
         )
-
-        if response.status_code != 200:
-            raise Exception(f"Error from Claude API: {response.text}")
-
-        return response.json()["content"][0]["text"]
+        return response.content[0].text

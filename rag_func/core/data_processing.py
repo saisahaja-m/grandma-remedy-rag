@@ -1,11 +1,9 @@
 import os
 import json
-import re
 import tiktoken
 from typing import List
 from langchain.schema import Document
-from langchain_community.document_loaders import WebBaseLoader
-from rag_func.constants.config import URLS, CHUNKING, ACTIVE_CONFIG, OPENAI_API_KEY
+from rag_func.constants.config import CHUNKING, ACTIVE_CONFIG
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from rag_func.constants.enums import ChunkingTypeEnum, DocProcessingEnum
@@ -217,7 +215,7 @@ class AgenticChunker:
         from langchain_openai import ChatOpenAI
         from langchain.prompts import PromptTemplate
         llm = ChatOpenAI(model="gpt-4o",
-                         api_key=OPENAI_API_KEY,
+                         api_key=os.getenv("OPENAI_API_KEY"),
                          verbose=True,
                          temperature=1)
         prompt = """I am providing a document below. 

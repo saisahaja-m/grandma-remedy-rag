@@ -1,11 +1,16 @@
 import json
+import os
 import requests
 import cohere
 import re
 from langchain.schema import Document
-from rag_func.constants.config import RERANKING, GROQ_API_KEY, ACTIVE_CONFIG, COHERE_API_KEY, JINA_API_KEY
+from rag_func.constants.config import RERANKING, ACTIVE_CONFIG
 from typing import List, Dict
 from rag_func.constants.enums import RerankingTypesEnum
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_reranker():
@@ -29,10 +34,10 @@ def get_reranker():
 
 
 class GroqReranker:
-    def __init__(self, model: str, top_k: int = 5, api_key: str = None):
+    def __init__(self, model: str, top_k: int):
         self.model = model
         self.top_k = top_k
-        self.api_key = api_key or GROQ_API_KEY  # Fallback if passed as None
+        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     def rerank(self, query: str, documents: List[Document]) -> List[Document]:
         reranked = []
@@ -47,24 +52,9 @@ class GroqReranker:
             )
 
             try:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-
-                data = {
-                    "model": self.model,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.0
-                }
-
-                response = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers=headers,
-                    json=data,
-                    timeout=10
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}]
                 )
 
                 response.raise_for_status()
@@ -84,7 +74,7 @@ class GroqReranker:
 
 class CohereReranker:
     def __init__(self, model: str):
-        api_key = COHERE_API_KEY
+        api_key = os.getenv("COHERE_API_KEY")
         self.client = cohere.Client(api_key)
         self.model = model
 
@@ -116,14 +106,14 @@ class JinaReranker:
         url = 'https://api.jina.ai/v1/rerank'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': JINA_API_KEY
+            'Authorization': os.getenv("JINA_API_KEY")
         }
         data = {
             "model": self.model,
             "query": query,
             "top_n": self.top_k,
             "documents": formatted_docs,
-            "return_documents": True  # Set to True to get documents back
+            "return_documents": True
         }
 
         response = requests.post(url, headers=headers, data=json.dumps(data))

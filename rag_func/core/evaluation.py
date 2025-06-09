@@ -1,13 +1,14 @@
 from ragas.metrics import faithfulness, answer_relevancy, ResponseGroundedness, ContextRelevance
 from ragas import evaluate
 from datasets import Dataset
-from rag_func.constants.config import EVALUATION, ACTIVE_CONFIG, CLAUDE_API_KEY
+from rag_func.constants.config import EVALUATION, ACTIVE_CONFIG
 from trulens.providers.openai import OpenAI
 from rag_func.constants.enums import EvaluatorTypesEnum, EvaluatingMetricsEnum
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import ContextualRelevancyMetric, AnswerRelevancyMetric, FaithfulnessMetric, ContextualRecallMetric
 from typing import Dict
 import requests
+import os
 
 
 def get_evaluator():
@@ -217,9 +218,9 @@ class CustomEvaluator:
         return str(text)
 
     def get_llm_score(self, prompt: str) -> int:
-
+        api_key = os.getenv("CLAUDE_API_KEY")
         headers = {
-            "x-api-key": CLAUDE_API_KEY,
+            "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json"
         }

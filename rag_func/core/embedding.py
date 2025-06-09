@@ -1,13 +1,16 @@
-from langchain_cohere import CohereEmbeddings
-import numpy as np
+import os
 import voyageai
+import time
+from langchain_cohere import CohereEmbeddings
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from rag_func.constants.config import EMBEDDING_MODELS, ACTIVE_CONFIG
-from rag_func.constants.config import VOYAGE_API_KEY, COHERE_API_KEY, MISTRAL_API_KEY
 from langchain_core.embeddings import Embeddings
-from rag_func.constants.enums import EmbeddingsTypeEnum, InputTypesEnum
+from rag_func.constants.enums import EmbeddingsTypeEnum
 from mistralai import Mistral
 from typing import List
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_embedding_model():
 
@@ -27,7 +30,7 @@ def get_embedding_model():
 
 class VoyageaiEmbeddings(Embeddings):
     def __init__(self, model_name):
-        api_key = VOYAGE_API_KEY
+        api_key = os.getenv("VOYAGE_API_KEY")
         self.vo = voyageai.Client(api_key=api_key)
         self.model_name = model_name
 
@@ -42,7 +45,7 @@ class VoyageaiEmbeddings(Embeddings):
 
 class CohereEmbedding(Embeddings):
     def __init__(self, model_name):
-        api_key = COHERE_API_KEY
+        api_key = os.getenv("COHERE_API_KEY")
         self.model_name = model_name
         self._model = CohereEmbeddings(model=model_name, cohere_api_key=api_key)
 
@@ -53,11 +56,9 @@ class CohereEmbedding(Embeddings):
         return self._model.embed_documents(documents)
 
 
-import time
-
 class MistralEmbeddings(Embeddings):
     def __init__(self, model_name):
-        api_key = MISTRAL_API_KEY
+        api_key = os.getenv("MISTRAL_API_KEY")
         self.model = model_name
         self.client = Mistral(api_key=api_key)
         self.sleep_seconds = 2

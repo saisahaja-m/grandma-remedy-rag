@@ -1,31 +1,21 @@
 import streamlit as st
 from dotenv import load_dotenv
-import pandas as pd
+import os
 from rag_func.core.data_processing import load_and_process_documents
 from rag_func.core.retrieval import get_retriever
 from rag_func.core.generation import get_llm_model
 from rag_func.core.evaluation import get_evaluator
 from rag_func.core.reranking import get_reranker
-from rag_func.constants.config import APP_CONFIG, OPENAI_API_KEY
+from rag_func.constants.config import APP_CONFIG
 from rag_func.core.function_calling import RAGAssistantWithFunctions
+from rag_func.core.embedding import get_embedding_model
 
 load_dotenv()
 
-def get_ground_truth_for_question(question: str, filepath: str = "ground_truths.csv") -> str:
-    try:
-        df = pd.read_csv(filepath)
-        match = df[df['question'].str.strip().str.lower() == question.strip().lower()]
-        if not match.empty:
-            return match.iloc[0]['answer']
-        else:
-            return "Ground truth not found for this question."
-    except Exception as e:
-        return f"Error retrieving ground truth: {e}"
-
-@st.cache_resource
 def initialize_rag_system():
     docs = load_and_process_documents()
-    retriever = get_retriever(docs)
+    embeddings = get_embedding_model()
+    retriever = get_retriever(docs, embeddings)
     reranker = get_reranker()
     llm = get_llm_model()
     evaluator = get_evaluator()
@@ -46,7 +36,6 @@ def evaluate_response(rag_system, reranked_docs, user_input, response):
     )
     return evaluation_result
 
-
 def display_chat_history():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -55,9 +44,13 @@ def display_chat_history():
 def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
     st.title(APP_CONFIG["title"])
-    rag_system = initialize_rag_system()
 
-    assistant = RAGAssistantWithFunctions(openai_api_key=OPENAI_API_KEY, rag_system=rag_system)
+    if "rag_system" not in st.session_state:
+        st.session_state.rag_system = initialize_rag_system()
+
+    rag_system = st.session_state.rag_system
+
+    assistant = RAGAssistantWithFunctions(openai_api_key=os.getenv("OPENAI_API_KEY"), rag_system=rag_system)
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -75,7 +68,6 @@ def main():
             st.markdown(user_input)
 
         with st.chat_message("assistant"):
-
             response, reranked_docs = assistant.classify_and_handle_query(
                 user_input=user_input,
                 memories=st.session_state.memories,

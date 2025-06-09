@@ -165,7 +165,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Check if input file exists
     if not os.path.exists(args.input_file):
         print(f"Error: Input file '{args.input_file}' not found")
         return

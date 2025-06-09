@@ -21,9 +21,9 @@ def format_context_from_docs(docs):
 
 
 def create_system_prompt(query, chat_history, context, memories):
-    from rag_func.constants.config import APP_CONFIG
+    from rag_func.prompt_providers.templates.grandma_remedy_prompt_template import GRANDMA_REMEDY_PROMPT_TEMPLATE
 
-    template = APP_CONFIG["prompt_template"]
+    template = GRANDMA_REMEDY_PROMPT_TEMPLATE
     return template.format(
         query=query,
         chat_history=chat_history,
