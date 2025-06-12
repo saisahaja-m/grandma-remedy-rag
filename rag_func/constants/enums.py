@@ -29,6 +29,7 @@ class LLMTypesEnum(Enum):
     GeminiLLM = "gemini"
     OpenAiLLM = "openai"
     ClaudeLLM = "claude"
+    GroqLLM = "groq"
 
 
 class EvaluatorTypesEnum(Enum):

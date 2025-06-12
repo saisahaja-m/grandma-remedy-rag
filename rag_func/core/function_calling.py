@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 import json
 from openai import OpenAI
-from rag_func.utils.helpers import format_context_from_docs, create_system_prompt
+from rag_func.utils.helpers import format_context_from_docs
 from rag_func.utils.tools import open_ai_tools
 
 class RAGAssistantWithFunctions:
@@ -11,22 +11,10 @@ class RAGAssistantWithFunctions:
         self.user_greetings = ["hello", "hi", "namaste", "hey", "greetings"]
         self.tools = open_ai_tools
 
-    def classify_and_handle_query(self, user_input: str, memories: List[str], chat_history: List[Dict]) -> Tuple[str, List]:
-        system_prompt = f"""
-        You are Grandma, a wise elderly woman who specializes in traditional health remedies and home treatments.
-
-        Analyze the user's input and determine the appropriate action:
-
-        1. If it's a greeting ({', '.join(self.user_greetings)}), use handle_greeting
-        2. If the query is not related to health, remedies, or wellness (like rockets, robots, riddles), use reject_non_health_query
-        3. If it's a health-related query, use process_health_query
-
-        User input: "{user_input}"
-        Current conversation context: {len(memories)} previous interactions
-
-        Choose the most appropriate function to handle this request.
-        """
-
+    def classify_and_handle_query(self, user_input: str, chat_history: List[Dict], memories: List[str]) -> Tuple[str, List]:
+        from rag_func.prompt_providers.prompt_service.prompt_provider import FunctionCallingPromptProvider
+        prompt_provider = FunctionCallingPromptProvider()
+        system_prompt = prompt_provider.get_user_prompt(user_input=user_input, chat_history_text=chat_history)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input}
@@ -123,13 +111,17 @@ class RAGAssistantWithFunctions:
         return full_response, reranked_docs
 
 def process_query_with_rag(rag_system, user_input, memories, chat_history):
+    from rag_func.prompt_providers.prompt_service.prompt_provider import ResponsePromptProvider
     relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
     docs = [doc for doc in relevant_docs if doc.page_content.strip()]
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)
     context = format_context_from_docs(reranked_docs)
 
-    prompt = create_system_prompt(user_input, chat_history, context, memories)
+    prompt_provider = ResponsePromptProvider()
+
+    prompt = prompt_provider.get_user_prompt(user_input=user_input, chat_history_text=chat_history,
+                                             context=context, memories=memories, cached=False)
 
     response = rag_system["llm"].generate_response(prompt)
 

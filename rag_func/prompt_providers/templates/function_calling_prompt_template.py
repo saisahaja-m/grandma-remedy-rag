@@ -8,8 +8,8 @@ FUNCTION_CALLING_PROMPT_TEMPLATE = \
         2. If the query is not related to health, remedies, or wellness (like rockets, robots, riddles), use reject_non_health_query
         3. If it's a health-related query, use process_health_query
 
-        User input: "{USERINPUT}"
-        Current conversation context: {len(memories)} previous interactions
+        User input: "{user_input}"
+        Here is chat_history: "{chat_history}"
 
         Choose the most appropriate function to handle this request.
     """

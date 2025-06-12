@@ -3,106 +3,81 @@ import os
 import requests
 import cohere
 import re
+from abc import ABC, abstractmethod
 from langchain.schema import Document
 from rag_func.constants.config import RERANKING, ACTIVE_CONFIG
-from typing import List, Dict
 from rag_func.constants.enums import RerankingTypesEnum
 from groq import Groq
 from dotenv import load_dotenv
+from typing import List
+from rag_func.prompt_providers.prompt_service.prompt_provider import RerankingPromptProvider
 
 load_dotenv()
 
+class BaseReranker(ABC):
+    @abstractmethod
+    def rerank(self, query: str, documents: List[Document]) -> List[Document]:
+        pass
 
-def get_reranker():
-    rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
-    rerank_type = rerank_config["type"]
-
-    if rerank_type == RerankingTypesEnum.Groq.value:
-        return GroqReranker(
-            model=rerank_config["model"],
-            top_k=rerank_config.get("top_k", 5)
-        )
-    elif rerank_type == RerankingTypesEnum.Cohere.value:
-        return CohereReranker(
-            model=rerank_config["model"])
-    elif rerank_type == RerankingTypesEnum.Jina.value:
-        return JinaReranker(
-            model=rerank_config["model"],
-            top_k=rerank_config["top_k"]
-        )
-    return None
-
-
-class GroqReranker:
-    def __init__(self, model: str, top_k: int):
+class GroqReranker(BaseReranker):
+    def __init__(self, model: str, top_k: int = 5):
         self.model = model
         self.top_k = top_k
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     def rerank(self, query: str, documents: List[Document]) -> List[Document]:
         reranked = []
+        prompt_provider = RerankingPromptProvider()
 
         for doc in documents:
-            prompt = (
-                "You are a helpful assistant. Score the relevance of the following context "
-                "to the user's query on a scale from 0.0 to 1.0.\n\n"
-                f"Query: {query}\n"
-                f"Context:\n{doc.page_content}\n\n"
-                "Score (respond with only a float from 0.0 to 1.0):"
+            prompt = prompt_provider.get_user_prompt(query=query, page_content=doc.page_content)
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
             )
-
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-
-                response.raise_for_status()
-                score_text = response.json()["choices"][0]["message"]["content"].strip()
-                match = re.search(r"\d*\.?\d+", score_text)
-                score = float(match.group()) if match else 0.0
-
-                reranked.append((doc, score))
-
-            except Exception as e:
-                print(f"Error scoring doc: {e}")
-                reranked.append((doc, 0.0))
+            score_text = response.choices[0].message.content.strip()
+            match = re.search(r"\d*\.?\d+", score_text)
+            score = float(match.group()) if match else 0.0
+            reranked.append((doc, score))
 
         reranked.sort(key=lambda x: x[1], reverse=True)
         return [doc for doc, _ in reranked[:self.top_k]]
 
 
-class CohereReranker:
-    def __init__(self, model: str):
+class CohereReranker(BaseReranker):
+    def __init__(self, model: str, top_k: int = 5):
         api_key = os.getenv("COHERE_API_KEY")
         self.client = cohere.Client(api_key)
         self.model = model
+        self.top_k = top_k
 
-    def rerank(self, query: str, documents: List[str], top_n: int = 5) -> List[Dict[str, float]]:
+    def rerank(self, query: str, documents: List[Document]) -> List[Document]:
+        doc_texts = [doc.page_content for doc in documents]
         response = self.client.rerank(
             query=query,
-            documents=documents,
+            documents=doc_texts,
             model=self.model,
-            top_n=top_n
+            top_n=self.top_k
         )
-        return [
-        {
-            "document": result.document["text"] if result.document else "",
-            "score": result.relevance_score
-        }
-        for result in response.results
-        if result.document and result.document.get("text")
-    ]
+        reranked_docs = []
+        for result in response.results:
+            idx = result.index
+            if 0 <= idx < len(documents):
+                doc = documents[idx]
+                if hasattr(doc, 'metadata'):
+                    doc.metadata['relevance_score'] = result.relevance_score
+                reranked_docs.append(doc)
+        return reranked_docs
 
-class JinaReranker:
-    def __init__(self, model, top_k):
+
+class JinaReranker(BaseReranker):
+    def __init__(self, model: str, top_k: int):
         self.model = model
         self.top_k = top_k
 
-    def rerank(self, query, documents):
-
+    def rerank(self, query: str, documents: List[Document]) -> List[Document]:
         formatted_docs = [{"text": doc.page_content} for doc in documents]
-
         url = 'https://api.jina.ai/v1/rerank'
         headers = {
             'Content-Type': 'application/json',
@@ -117,6 +92,7 @@ class JinaReranker:
         }
 
         response = requests.post(url, headers=headers, data=json.dumps(data))
+        response.raise_for_status()
         response_data = response.json()
 
         reranked_docs = []
@@ -132,3 +108,26 @@ class JinaReranker:
                     reranked_docs.append(doc)
 
         return reranked_docs
+
+class RerankerFactory:
+    @staticmethod
+    def get_reranker() -> BaseReranker:
+        rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
+        rerank_type = rerank_config["type"]
+        model = rerank_config["model"]
+        top_k = rerank_config.get("top_k", 5)
+
+        reranker_classes = {
+            RerankingTypesEnum.Groq.value: GroqReranker,
+            RerankingTypesEnum.Cohere.value: CohereReranker,
+            RerankingTypesEnum.Jina.value: JinaReranker
+        }
+
+        reranker_class = reranker_classes.get(rerank_type)
+        if reranker_class is None:
+            raise ValueError(f"Unsupported reranker type: {rerank_type}")
+
+        return reranker_class(model=model, top_k=top_k)
+
+def get_reranker() -> BaseReranker:
+    return RerankerFactory.get_reranker()

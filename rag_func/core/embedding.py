@@ -1,6 +1,7 @@
 import os
 import voyageai
 import time
+from abc import ABC, abstractmethod
 from langchain_cohere import CohereEmbeddings
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from rag_func.constants.config import EMBEDDING_MODELS, ACTIVE_CONFIG
@@ -12,23 +13,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_embedding_model():
 
-    model_config = EMBEDDING_MODELS[ACTIVE_CONFIG['embedding']]
-    model_type = model_config["type"]
+class BaseEmbeddingModel(Embeddings, ABC):
+    @abstractmethod
+    def embed_documents(self, documents: List[str]) -> List[List[float]]:
+        pass
 
-    if model_type == EmbeddingsTypeEnum.HuggingFace.value:
-        return HuggingFaceEmbeddings(model_name=model_config["model_name"])
-    elif model_type == EmbeddingsTypeEnum.Voyageai.value:
-        return VoyageaiEmbeddings(model_name=model_config["model_name"])
-    elif model_type == EmbeddingsTypeEnum.Cohere.value:
-        return CohereEmbedding(model_name=model_config["model_name"])
-    elif model_type == EmbeddingsTypeEnum.Mistral.value:
-        return MistralEmbeddings(model_name=model_config["model_name"])
-    return None
+    @abstractmethod
+    def embed_query(self, text: str) -> List[float]:
+        pass
 
 
-class VoyageaiEmbeddings(Embeddings):
+class VoyageaiEmbeddings(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("VOYAGE_API_KEY")
         self.vo = voyageai.Client(api_key=api_key)
@@ -43,7 +39,7 @@ class VoyageaiEmbeddings(Embeddings):
         return result.embeddings[0]
 
 
-class CohereEmbedding(Embeddings):
+class CohereEmbedding(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("COHERE_API_KEY")
         self.model_name = model_name
@@ -56,7 +52,7 @@ class CohereEmbedding(Embeddings):
         return self._model.embed_documents(documents)
 
 
-class MistralEmbeddings(Embeddings):
+class MistralEmbeddings(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("MISTRAL_API_KEY")
         self.model = model_name
@@ -95,3 +91,29 @@ class MistralEmbeddings(Embeddings):
             inputs=[text],
         )
         return response.data[0].embedding
+
+
+class EmbeddingModelFactory:
+
+    @staticmethod
+    def get_embedding_model() -> BaseEmbeddingModel:
+        model_config = EMBEDDING_MODELS[ACTIVE_CONFIG['embedding']]
+        model_type = model_config["type"]
+        model_name = model_config["model_name"]
+
+        embedding_classes = {
+            EmbeddingsTypeEnum.HuggingFace.value: HuggingFaceEmbeddings,
+            EmbeddingsTypeEnum.Voyageai.value: VoyageaiEmbeddings,
+            EmbeddingsTypeEnum.Cohere.value: CohereEmbedding,
+            EmbeddingsTypeEnum.Mistral.value: MistralEmbeddings
+        }
+
+        embedding_class = embedding_classes.get(model_type)
+        if embedding_class is None:
+            raise ValueError(f"Unsupported embedding type: {model_type}")
+
+        return embedding_class(model_name=model_name)
+
+
+def get_embedding_model():
+    return EmbeddingModelFactory.get_embedding_model()
