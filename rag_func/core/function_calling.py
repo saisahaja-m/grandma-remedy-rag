@@ -3,6 +3,7 @@ import json
 from openai import OpenAI
 from rag_func.utils.helpers import format_context_from_docs
 from rag_func.utils.tools import open_ai_tools
+from rag_func.prompt_providers.prompt_service.prompt_provider import ResponsePromptProvider
 
 class RAGAssistantWithFunctions:
     def __init__(self, openai_api_key: str, rag_system):
@@ -111,8 +112,9 @@ class RAGAssistantWithFunctions:
         return full_response, reranked_docs
 
 def process_query_with_rag(rag_system, user_input, memories, chat_history):
-    from rag_func.prompt_providers.prompt_service.prompt_provider import ResponsePromptProvider
-    relevant_docs = rag_system["retriever"].get_relevant_documents(user_input)
+    embeddings = rag_system["embeddings"]
+
+    relevant_docs = rag_system["retriever"].get_relevant_documents(user_input, embeddings)
     docs = [doc for doc in relevant_docs if doc.page_content.strip()]
 
     reranked_docs = rag_system["reranker"].rerank(user_input, docs)

@@ -55,10 +55,9 @@ class VectorStoresEnum(Enum):
 
 
 class RetrievalTypesEnum(Enum):
-    Vector = "vector"
-    bm25 = "bm25"
-    Ensemble = "ensemble"
-    Semantic = "semantic"
+    Faiss = "faiss"
+    Annoy = "annoy"
+    Chroma = "chroma"
 
 
 class RerankingTypesEnum(Enum):

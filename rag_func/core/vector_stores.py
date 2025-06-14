@@ -1,35 +1,86 @@
+import os
+import faiss
 from abc import ABC, abstractmethod
 from langchain_community.vectorstores import Chroma, FAISS, Annoy
-from rag_func.constants.config import VECTOR_STORES, ACTIVE_CONFIG
+from rag_func.constants.config import VECTOR_STORES, ACTIVE_CONFIG, PERSIST_DIRECTORY, COLLECTION_NAME
 from rag_func.constants.enums import VectorStoresEnum
 from langchain_core.vectorstores import VectorStore
 from langchain_core.documents import Document
 from typing import List
+from langchain_community.docstore.in_memory import InMemoryDocstore
+import numpy as np
+import chromadb
 
-class BaseVectorStore(VectorStore, ABC):
+class BaseVectorStore(ABC):
     @classmethod
     @abstractmethod
-    def from_documents(cls, documents: List[Document], embedding, **kwargs) -> VectorStore:
+    def from_documents(cls, documents: List[Document], embedding) -> VectorStore:
         pass
 
-class FaissVectorStore(FAISS, BaseVectorStore):
+class FaissVectorStore(BaseVectorStore):
     @classmethod
-    def from_documents(cls, documents: List[Document], embedding, **kwargs) -> VectorStore:
-        return FAISS.from_documents(documents, embedding, **kwargs)
+    def from_documents(cls, documents: List[Document], embedding) -> VectorStore:
+        texts = [doc.page_content for doc in documents]
+        embeddings = embedding.embed_documents(texts)
+        index = faiss.IndexFlatL2(len(embeddings[0]))
 
-class ChromaVectorStore(Chroma, BaseVectorStore):
-    @classmethod
-    def from_documents(cls, documents: List[Document], embedding, **kwargs) -> VectorStore:
-        return Chroma.from_documents(documents, embedding, **kwargs)
+        index.add(np.array(embeddings, dtype='float32'))
 
-class AnnoyVectorStore(Annoy, BaseVectorStore):
+        docstore = InMemoryDocstore({i: doc for i, doc in enumerate(documents)})
+        index_to_docstore_id = {i: i for i in range(len(documents))}
+
+        vector_store = FAISS(
+            embedding_function=embedding,
+            index=index,
+            docstore=docstore,
+            index_to_docstore_id=index_to_docstore_id,
+        )
+        vector_store.save_local("faiss_index")
+        return vector_store
+
+
+class ChromaVectorStore(BaseVectorStore):
     @classmethod
-    def from_documents(cls, documents: List[Document], embedding, **kwargs) -> VectorStore:
-        return Annoy.from_documents(documents, embedding, **kwargs)
+    def from_documents(cls, documents: List[Document], embedding) -> VectorStore:
+        documents = [doc.page_content for doc in documents]
+
+        persistent_client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
+        collection = persistent_client.get_or_create_collection(name=COLLECTION_NAME)
+
+        start_id = collection.count() + 1
+        doc_ids = [str(i) for i in range(start_id, start_id + len(documents))]
+
+        collection.add(
+            ids=doc_ids,
+            documents=documents
+        )
+
+        vector_store = Chroma(
+            client=persistent_client,
+            collection_name=COLLECTION_NAME,
+            embedding_function=embedding
+        )
+
+        return vector_store
+
+
+class AnnoyVectorStore(BaseVectorStore):
+    @classmethod
+    def from_documents(cls, documents: List[Document], embedding) -> VectorStore:
+        texts = [doc.page_content for doc in documents]
+
+        vector_store = Annoy.from_texts(texts, embedding)
+        save_path = "/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index"
+
+        os.makedirs(save_path, exist_ok=True)
+        vector_store.save_local(save_path)
+
+        return vector_store
+
 
 class VectorStoreFactory:
     @staticmethod
-    def create_vector_store(docs: List[Document], embedding_model, **kwargs) -> VectorStore:
+    def create_vector_store(docs: List[Document], embedding) -> VectorStore:
         vector_store_config = VECTOR_STORES[ACTIVE_CONFIG["vector_store"]]
         vector_store_type = vector_store_config["type"]
 
@@ -43,7 +94,7 @@ class VectorStoreFactory:
         if vector_store_class is None:
             raise ValueError(f"Unsupported vector store type: {vector_store_type}")
 
-        return vector_store_class.from_documents(docs, embedding_model, **kwargs)
+        return vector_store_class.from_documents(docs, embedding)
 
-def create_vector_store(docs: List[Document], embedding_model, **kwargs):
-    return VectorStoreFactory.create_vector_store(docs, embedding_model, **kwargs)
+def create_vector_store(docs: List[Document], embedding):
+    return VectorStoreFactory.create_vector_store(docs, embedding)

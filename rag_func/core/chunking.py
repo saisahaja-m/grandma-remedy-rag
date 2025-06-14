@@ -61,35 +61,17 @@ class SemanticChunker(BaseChunker):
     def __init__(self, chunk_size: int, chunk_overlap: int):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.encoding = tiktoken.get_encoding("cl100k_base")
-
-    def _token_length(self, text: str) -> int:
-        return len(self.encoding.encode(text))
 
     def chunk_text(self, text: str) -> List[str]:
-        from flair.splitter import SegtokSentenceSplitter
+        from langchain_experimental.text_splitter import SemanticChunker
+        from langchain_openai.embeddings import OpenAIEmbeddings
 
-        text = text.strip()
-        if not text:
-            return []
+        text_splitter = SemanticChunker(OpenAIEmbeddings())
+        docs = text_splitter.create_documents([text])
+        docs = [doc.page_content for doc in docs]
 
-        splitter = SegtokSentenceSplitter()
-        sentences = [s for s in splitter.split(text) if s.to_plain_string().strip()]
-        chunks = []
-        current_chunk = ""
+        return docs
 
-        for sentence in sentences:
-            sentence_str = sentence.to_plain_string()
-            if self._token_length(current_chunk) + self._token_length(sentence_str) <= self.chunk_size:
-                current_chunk += " " + sentence_str
-            else:
-                chunks.append(current_chunk.strip())
-                current_chunk = sentence_str
-
-        if current_chunk:
-            chunks.append(current_chunk.strip())
-
-        return chunks
 
 class ChunkingFactory:
     @staticmethod

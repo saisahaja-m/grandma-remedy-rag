@@ -60,22 +60,16 @@ VECTOR_STORES = {
 
 # Retrieval configurations
 RETRIEVAL = {
-    RetrievalTypesEnum.Ensemble.value: {
-        "type": RetrievalTypesEnum.Ensemble.value,
-        "retrievers": ["bm25", "vector"],
-        "weights": [0.3, 0.7],
+    RetrievalTypesEnum.Faiss.value:{
+        "type": "faiss",
         "k": 5
     },
-    RetrievalTypesEnum.Vector.value: {
-        "type": RetrievalTypesEnum.Vector.value,
+    RetrievalTypesEnum.Annoy.value:{
+        "type": "annoy",
         "k": 5
     },
-    RetrievalTypesEnum.bm25.value: {
-        "type": RetrievalTypesEnum.bm25.value,
-        "k": 5
-    },
-    RetrievalTypesEnum.Semantic.value: {
-        "type": "semantic",
+    RetrievalTypesEnum.Chroma.value:{
+        "type": "chroma",
         "k": 5
     }
 }
@@ -177,8 +171,8 @@ APP_CONFIG = {
 
 ACTIVE_CONFIG = {
     "embedding": EmbeddingsTypeEnum.Voyageai.value,
-    "vector_store": VectorStoresEnum.Faiss.value,
-    "retrieval": RetrievalTypesEnum.Ensemble.value,
+    "vector_store": VectorStoresEnum.Chroma.value,
+    "retrieval": RetrievalTypesEnum.Faiss.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
     "reranking": RerankingTypesEnum.Jina.value,
@@ -194,3 +188,6 @@ user_greetings = [
     "hi grandma, i need a remedy", "hello, feeling unwell today", "hey grandma, not feeling great",
     "thank you", "thanks grandma", "you are the best", "thank you grandma", "thanks a lot"
 ]
+
+PERSIST_DIRECTORY = "./chroma_langchain_db"
+COLLECTION_NAME = "my_collection"

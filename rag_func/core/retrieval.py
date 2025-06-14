@@ -1,91 +1,61 @@
+import chromadb
 from abc import ABC, abstractmethod
-from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
-from langchain_core.vectorstores import VectorStoreRetriever
-from rag_func.constants.config import RETRIEVAL, ACTIVE_CONFIG
+from rag_func.constants.config import RETRIEVAL, ACTIVE_CONFIG, PERSIST_DIRECTORY, COLLECTION_NAME
 from rag_func.constants.enums import RetrievalTypesEnum
 from langchain_core.documents import Document
 from typing import List
+from langchain_community.vectorstores import FAISS, Annoy, Chroma
 
 class BaseRetriever(ABC):
     @abstractmethod
-    def get_relevant_documents(self, query: str) -> List[Document]:
+    def get_relevant_documents(self, query, embeddings) -> List[Document]:
         pass
 
-class VectorRetriever(BaseRetriever):
-    def __init__(self, vector_store, k: int):
-        self.retriever = VectorStoreRetriever(vectorstore=vector_store, search_kwargs={"k": k})
+class FaissRetriever(BaseRetriever):
+    def get_relevant_documents(self, query, embeddings) -> List[Document]:
+        new_vector_store = FAISS.load_local(
+            "faiss_index", embeddings, allow_dangerous_deserialization=True)
 
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        return self.retriever.get_relevant_documents(query)
+        docs = new_vector_store.similarity_search(query=query)
 
-class BM25RetrieverWrapper(BaseRetriever):
-    def __init__(self, docs: List[Document], k: int):
-        self.retriever = BM25Retriever.from_documents(docs)
-        self.retriever.k = k
+        return docs
 
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        return self.retriever.get_relevant_documents(query)
-
-class EnsembleRetrieverWrapper(BaseRetriever):
-    def __init__(self, docs: List[Document], vector_store, k: int, weights: List[float]):
-        bm25_retriever = BM25Retriever.from_documents(docs)
-        bm25_retriever.k = k
-        vector_retriever = VectorStoreRetriever(vectorstore=vector_store, search_kwargs={"k": k})
-        self.retriever = EnsembleRetriever(
-            retrievers=[bm25_retriever, vector_retriever],
-            weights=weights
+class AnnoyRetriever(BaseRetriever):
+    def get_relevant_documents(self, query, embeddings) -> List[Document]:
+        loaded_vector_store = Annoy.load_local(
+            folder_path="/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index",
+            embeddings=embeddings,
+            allow_dangerous_deserialization=True
         )
 
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        return self.retriever.get_relevant_documents(query)
-
-class SemanticRetriever(BaseRetriever):
-    def __init__(self, vector_store, k: int, similarity_threshold: float, use_mmr: bool = True,
-                 mmr_diversity_penalty: float = 0.5):
-        self.vector_store = vector_store
-        self.k = k
-        self.similarity_threshold = similarity_threshold
-        self.use_mmr = use_mmr
-        self.mmr_diversity_penalty = mmr_diversity_penalty
-
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        if self.use_mmr:
-            docs = self.vector_store.max_marginal_relevance_search(
-                query, k=self.k, lambda_mult=1 - self.mmr_diversity_penalty
-            )
-        else:
-            docs_with_scores = self.vector_store.similarity_search_with_score(
-                query, k=self.k * 2
-            )
-            docs = [
-                doc for doc, score in docs_with_scores
-                if score >= self.similarity_threshold
-            ][:self.k]
+        docs = loaded_vector_store.similarity_search(query)
         return docs
+
+class ChromaRetriever(BaseRetriever):
+    def get_relevant_documents(self, query, embeddings) -> List[Document]:
+
+        persistent_client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
+        vector_store = Chroma(
+            client=persistent_client,
+            collection_name=COLLECTION_NAME,
+            embedding_function=embeddings
+        )
+        docs = vector_store.similarity_search(query, k=5)
+
+        return docs
+
 
 class RetrieverFactory:
     @staticmethod
-    def get_retriever(docs: List[Document], vector_store, retrieval_config: dict = None) -> BaseRetriever:
-        if retrieval_config is None:
-            retrieval_config = RETRIEVAL[ACTIVE_CONFIG["retrieval"]]
+    def get_retriever() -> BaseRetriever:
+        retrieval_config = RETRIEVAL[ACTIVE_CONFIG["retrieval"]]
         retrieval_type = retrieval_config["type"]
         k = retrieval_config["k"]
 
         retriever_classes = {
-            RetrievalTypesEnum.Vector.value: lambda: VectorRetriever(
-                vector_store=vector_store, k=k
-            ),
-            RetrievalTypesEnum.bm25.value: lambda: BM25RetrieverWrapper(docs=docs, k=k),
-            RetrievalTypesEnum.Ensemble.value: lambda: EnsembleRetrieverWrapper(
-                docs=docs, vector_store=vector_store, k=k,
-                weights=retrieval_config.get("weights", [0.5, 0.5])
-            ),
-            RetrievalTypesEnum.Semantic.value: lambda: SemanticRetriever(
-                vector_store=vector_store,
-                k=k,
-                similarity_threshold=retrieval_config.get("similarity_threshold", 0.0)
-            )
+            RetrievalTypesEnum.Faiss.value: lambda: FaissRetriever(),
+            RetrievalTypesEnum.Annoy.value: lambda: AnnoyRetriever(),
+            RetrievalTypesEnum.Chroma.value: lambda: ChromaRetriever()
         }
 
         retriever_class = retriever_classes.get(retrieval_type)
@@ -94,5 +64,5 @@ class RetrieverFactory:
 
         return retriever_class()
 
-def get_retriever(docs: List[Document], vector_store, retrieval_config: dict = None) -> BaseRetriever:
-    return RetrieverFactory.get_retriever(docs, vector_store, retrieval_config)
+def get_retriever() -> BaseRetriever:
+    return RetrieverFactory.get_retriever()
