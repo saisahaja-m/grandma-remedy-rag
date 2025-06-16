@@ -27,15 +27,33 @@ class BaseEmbeddingModel(Embeddings, ABC):
 class VoyageaiEmbeddings(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("VOYAGE_API_KEY")
-        self.vo = voyageai.Client(api_key=api_key)
+        self.client = voyageai.Client(api_key=api_key)
         self.model_name = model_name
+        self.batch_size = 1000
+        self.sleep_seconds = 2
 
-    def embed_documents(self, texts):
-        result = self.vo.embed(texts, model=self.model_name, input_type="document")
-        return result.embeddings
+    def embed_documents(self, documents):
+        all_embeddings = []
+
+        for i in range(0, len(documents), self.batch_size):
+            if i > 0:
+                time.sleep(self.sleep_seconds)
+
+            batch = documents[i:i + self.batch_size]
+
+            response = self.client.embed(
+                texts=batch,
+                model=self.model_name,
+                input_type="document"
+            )
+
+            batch_embeddings = [data for data in response.embeddings]
+            all_embeddings.extend(batch_embeddings)
+
+        return all_embeddings
 
     def embed_query(self, text):
-        result = self.vo.embed([text], model=self.model_name, input_type="query")
+        result = self.client.embed([text], model=self.model_name, input_type="query")
         return result.embeddings[0]
 
 
@@ -43,19 +61,19 @@ class CohereEmbedding(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("COHERE_API_KEY")
         self.model_name = model_name
-        self._model = CohereEmbeddings(model=model_name, cohere_api_key=api_key)
+        self.client = CohereEmbeddings(model=model_name, cohere_api_key=api_key)
 
     def embed_query(self, query: str) -> List[float]:
-        return self._model.embed_query(query)
+        return self.client.embed_query(query)
 
     def embed_documents(self, documents: List[str]) -> List[List[float]]:
-        return self._model.embed_documents(documents)
+        return self.client.embed_documents(documents)
 
 
 class MistralEmbeddings(BaseEmbeddingModel):
     def __init__(self, model_name):
         api_key = os.getenv("MISTRAL_API_KEY")
-        self.model = model_name
+        self.model_name = model_name
         self.client = Mistral(api_key=api_key)
         self.sleep_seconds = 2
         self.batch_size = 8
@@ -71,7 +89,7 @@ class MistralEmbeddings(BaseEmbeddingModel):
 
             try:
                 response = self.client.embeddings.create(
-                    model=self.model,
+                    model=self.model_name,
                     inputs=batch
                 )
 
@@ -87,7 +105,7 @@ class MistralEmbeddings(BaseEmbeddingModel):
     def embed_query(self, text):
         time.sleep(self.sleep_seconds)
         response = self.client.embeddings.create(
-            model=self.model,
+            model=self.model_name,
             inputs=[text],
         )
         return response.data[0].embedding

@@ -10,8 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
 class BaseLLM(ABC):
     @abstractmethod
     def generate_response(self, prompt: str) -> str:
@@ -23,6 +21,7 @@ class GeminiLLM(BaseLLM):
         self.temperature = temperature
 
     def generate_response(self, prompt: str) -> str:
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
         response = self.model.generate_content(prompt)
         return response.text
 

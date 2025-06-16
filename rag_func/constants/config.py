@@ -179,15 +179,7 @@ ACTIVE_CONFIG = {
     "chunking": ChunkingTypeEnum.Semantic.value
 }
 
-user_greetings = [
-    "hi", "hello", "hey", "hi there", "good morning", "good afternoon", "good evening",
-    "hey grandma", "hello grandma", "hi grandma", "hey there", "yo", "what's up?",
-    "hi, i need help", "hello, can you help me?", "hi, i’m not feeling well",
-    "good day", "is anyone there?", "hi, i have a question", "hello, i need a remedy",
-    "hi grandma, i need your advice", "hello grandma, can you help me?", "hey grandma, i feel sick",
-    "hi grandma, i need a remedy", "hello, feeling unwell today", "hey grandma, not feeling great",
-    "thank you", "thanks grandma", "you are the best", "thank you grandma", "thanks a lot"
-]
-
 PERSIST_DIRECTORY = "./chroma_langchain_db"
-COLLECTION_NAME = "my_collection"
+COLLECTION_NAME = "my_collection_6"
+
+ANNOY_VECTOR_STORE_FILE_PATH = "/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index"

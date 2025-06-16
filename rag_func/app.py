@@ -50,8 +50,8 @@ def main():
     st.set_page_config(page_title=APP_CONFIG["title"], page_icon=APP_CONFIG["page_icon"], layout="wide")
     st.title(APP_CONFIG["title"])
 
-    initialize = True
-    if initialize:
+    preprocess = True
+    if preprocess:
         initialize_data_processing()
 
     rag_system = initialize_rag_components()

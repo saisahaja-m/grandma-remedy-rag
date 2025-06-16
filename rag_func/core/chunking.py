@@ -50,7 +50,7 @@ class SentenceWindowChunker(BaseChunker):
         self.parser = SentenceWindowNodeParser.from_defaults(
             window_size=window_size
         )
-        self.window_overlap = window_overlap  # Stored for potential future use
+        self.window_overlap = window_overlap
 
     def chunk_text(self, text: str) -> List[str]:
         document = Document(page_content=text)
@@ -58,10 +58,8 @@ class SentenceWindowChunker(BaseChunker):
         return [node.text for node in nodes]
 
 class SemanticChunker(BaseChunker):
-    def __init__(self, chunk_size: int, chunk_overlap: int):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-
+    def __init__(self):
+        pass
     def chunk_text(self, text: str) -> List[str]:
         from langchain_experimental.text_splitter import SemanticChunker
         from langchain_openai.embeddings import OpenAIEmbeddings
@@ -94,10 +92,7 @@ class ChunkingFactory:
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap
             ),
-            ChunkingTypeEnum.Semantic.value: lambda: SemanticChunker(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            ChunkingTypeEnum.Semantic.value: lambda: SemanticChunker()
         }
 
         chunker_class = chunker_classes.get(chunking_type)

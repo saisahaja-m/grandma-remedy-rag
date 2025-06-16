@@ -2,7 +2,8 @@ import os
 import faiss
 from abc import ABC, abstractmethod
 from langchain_community.vectorstores import Chroma, FAISS, Annoy
-from rag_func.constants.config import VECTOR_STORES, ACTIVE_CONFIG, PERSIST_DIRECTORY, COLLECTION_NAME
+from rag_func.constants.config import VECTOR_STORES, ACTIVE_CONFIG, PERSIST_DIRECTORY, COLLECTION_NAME, \
+    ANNOY_VECTOR_STORE_FILE_PATH
 from rag_func.constants.enums import VectorStoresEnum
 from langchain_core.vectorstores import VectorStore
 from langchain_core.documents import Document
@@ -50,9 +51,12 @@ class ChromaVectorStore(BaseVectorStore):
         start_id = collection.count() + 1
         doc_ids = [str(i) for i in range(start_id, start_id + len(documents))]
 
+        embeddings = embedding.embed_documents(documents)
+
         collection.add(
             ids=doc_ids,
-            documents=documents
+            documents=documents,
+            embeddings=embeddings
         )
 
         vector_store = Chroma(
@@ -70,7 +74,7 @@ class AnnoyVectorStore(BaseVectorStore):
         texts = [doc.page_content for doc in documents]
 
         vector_store = Annoy.from_texts(texts, embedding)
-        save_path = "/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index"
+        save_path = ANNOY_VECTOR_STORE_FILE_PATH
 
         os.makedirs(save_path, exist_ok=True)
         vector_store.save_local(save_path)

@@ -14,8 +14,9 @@ class BaseEvaluator(ABC):
     def evaluate(self, question: str, answer: str, contexts: List[str], ground_truth: Optional[str] = None) -> Union[Dict, List]:
         pass
 
-class RagasEvaluator(BaseEvaluator):
-    def __init__(self, metrics: Optional[List[str]] = None):
+
+class RagasEvaluator:
+    def __init__(self, metrics: List[str]):
         self.metric_mapping = {
             EvaluatingMetricsEnum.Faithfulness.value: faithfulness,
             EvaluatingMetricsEnum.AnswerRelevancy.value: answer_relevancy,
@@ -23,17 +24,13 @@ class RagasEvaluator(BaseEvaluator):
             EvaluatingMetricsEnum.ContextRelevance.value: ContextRelevance()
         }
 
-        if metrics is None:
-            metrics = [
-                EvaluatingMetricsEnum.Faithfulness.value,
-                EvaluatingMetricsEnum.AnswerRelevancy.value,
-                EvaluatingMetricsEnum.Groundedness.value,
-                EvaluatingMetricsEnum.ContextRelevance.value
-            ]
+        self.metrics = [
+            self.metric_mapping[metric]
+            for metric in metrics
+            if metric in self.metric_mapping
+        ]
 
-        self.metrics = [self.metric_mapping[metric] for metric in metrics if metric in self.metric_mapping]
-
-    def evaluate(self, question: str, answer: str, contexts: List[str], ground_truth: Optional[str] = None) -> Dict:
+    def evaluate(self,question: str, answer: str, contexts: List[str], ground_truth: Optional[str]):
         ground_truths = [ground_truth] if ground_truth else [""]
         data = Dataset.from_dict({
             "question": [question],
@@ -41,8 +38,8 @@ class RagasEvaluator(BaseEvaluator):
             "contexts": [contexts],
             "ground_truths": [ground_truths]
         })
-        result = evaluate(data, metrics=self.metrics)
-        return result
+        return evaluate(data, metrics=self.metrics)
+
 
 class TrulensEvaluator(BaseEvaluator):
     def __init__(self, model_name: str):
@@ -73,7 +70,6 @@ class DeepEvalEvaluator(BaseEvaluator):
     def evaluate(self, question: str, answer: str, contexts: List[str], ground_truth: Optional[str] = None):
         from deepeval import evaluate
 
-        relevant_docs = [doc if isinstance(doc, str) else doc.page_content for doc in contexts]
         answer_relevance_metric = AnswerRelevancyMetric(threshold=0.0, model=self.model_name, include_reason=True)
         faithfulness_metric = FaithfulnessMetric(threshold=0.0, model=self.model_name, include_reason=True)
         context_relevancy_metric = ContextualRelevancyMetric(threshold=0.0, model=self.model_name, include_reason=True)
@@ -82,7 +78,7 @@ class DeepEvalEvaluator(BaseEvaluator):
         test_case = LLMTestCase(
             input=question,
             actual_output=answer,
-            retrieval_context=relevant_docs,
+            retrieval_context=contexts,
             expected_output=ground_truth or ""
         )
         results = evaluate(
