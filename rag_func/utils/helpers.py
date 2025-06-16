@@ -21,12 +21,32 @@ def format_context_from_docs(docs):
 
 
 def create_system_prompt(query, chat_history, context, memories):
-    from rag_func.constants.config import APP_CONFIG
+    from rag_func.prompt_providers.templates.grandma_remedy_prompt_template import GRANDMA_REMEDY_PROMPT_TEMPLATE
 
-    template = APP_CONFIG["prompt_template"]
+    template = GRANDMA_REMEDY_PROMPT_TEMPLATE
     return template.format(
         query=query,
         chat_history=chat_history,
         context=context,
         memories=memories
     )
+
+def extract_title_from_text(content: str, fallback_title: str = "Remedy Information") -> str:
+    lines = content.split('\n')
+    potential_titles = []
+    for line in lines[:5]:
+        cleaned_line = line.strip()
+        if 10 < len(cleaned_line) < 150 and \
+                not cleaned_line.lower().startswith(('http:', 'https:')) and \
+                not any(kw in cleaned_line.lower() for kw in [
+                    'cookie', 'privacy', 'terms', 'copyright', 'navigation', 'advertisement',
+                    'subscribe', 'follow us', 'home', 'about', 'contact', 'skip to content',
+                    'search', 'login', 'register', '©', 'rights reserved', 'menu', '|', '•', '»'
+                ]) and \
+                sum(c.isalpha() for c in cleaned_line) / (len(cleaned_line) + 1e-5) > 0.6:
+            potential_titles.append(cleaned_line)
+
+    if potential_titles:
+        potential_titles.sort(key=len)
+        return potential_titles[0]
+    return fallback_title

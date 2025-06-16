@@ -5,16 +5,6 @@ from rag_func.constants.enums import EmbeddingsTypeEnum, ChunkingTypeEnum, LLMTy
 
 load_dotenv()
 
-# API Keys
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-COHERE_API_KEY = os.getenv("COHERE_API_KEY")
-VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
-JINA_API_KEY = os.getenv("JINA_API_KEY")
-
 # URLs for data sources
 URLS = [
     "https://www.healthline.com/health/constipation/instant-indian-home-remedy-for-constipation",
@@ -70,22 +60,16 @@ VECTOR_STORES = {
 
 # Retrieval configurations
 RETRIEVAL = {
-    RetrievalTypesEnum.Ensemble.value: {
-        "type": RetrievalTypesEnum.Ensemble.value,
-        "retrievers": ["bm25", "vector"],
-        "weights": [0.3, 0.7],
+    RetrievalTypesEnum.Faiss.value:{
+        "type": "faiss",
         "k": 5
     },
-    RetrievalTypesEnum.Vector.value: {
-        "type": RetrievalTypesEnum.Vector.value,
+    RetrievalTypesEnum.Annoy.value:{
+        "type": "annoy",
         "k": 5
     },
-    RetrievalTypesEnum.bm25.value: {
-        "type": RetrievalTypesEnum.bm25.value,
-        "k": 5
-    },
-    RetrievalTypesEnum.Semantic.value: {
-        "type": "semantic",
+    RetrievalTypesEnum.Chroma.value:{
+        "type": "chroma",
         "k": 5
     }
 }
@@ -180,71 +164,22 @@ EVALUATION = {
     }
 }
 
-# App configuration
 APP_CONFIG = {
     "title": "🌿 Grandma's Remedy RAG",
-    "page_icon": "🌿",
-    "prompt_template": """
-    You are *Remedy Assistant Bot*, an AI trained in traditional Indian home remedies and ancient Ayurvedic knowledge. You provide helpful, clear, and accurate responses based strictly on the provided data.
-
-    ---
-    
-    **USER QUERY**:  
-    "{query}"
-    
-    **CHAT HISTORY**:  
-    {chat_history}
-    
-    **RELEVANT REMEDIES (Your only source of truth)**:  
-    {context}
-    
-    **MEMORIES (Past preferences or important user-specific notes)**:  
-    {memories}
-    
-    ---
-    
-    **INSTRUCTIONS**:
-    
-    1. **Use only the RELEVANT REMEDIES section to answer.**  
-       Do **not** create or assume remedies outside the given context.  
-       If no matching remedy is found, respond neutrally:  
-       *"I couldn’t find a suitable remedy for that in the available information. Let me know if you'd like me to try again with more details."*
-    
-    2. **STRICT RULE**:  
-       NEVER suggest ingredients listed in the user's dislikes or allergies (from the MEMORIES section).  
-       Cross-check each suggestion before responding.
-    
-    3. **Tone & Style**:  
-       - Use a neutral, professional, and informative tone.  
-       - Avoid emotional or affectionate language.
-    
-    4. **Credibility**:  
-       - Remedies should be grounded in established sources like *Charaka Samhita*, *Bhavaprakasha*, or commonly accepted traditional practices.  
-       - You may reference these where applicable, e.g., *"This is also found in Charaka Samhita."*
-    ---
-    
-    Your priority is to provide reliable, user-aware, and context-accurate remedy suggestions.
-
-    """
+    "page_icon": "🌿"
 }
 
-# Active configuration using enums
 ACTIVE_CONFIG = {
     "embedding": EmbeddingsTypeEnum.Voyageai.value,
-    "vector_store": VectorStoresEnum.Faiss.value,
-    "retrieval": RetrievalTypesEnum.Ensemble.value,
+    "vector_store": VectorStoresEnum.Chroma.value,
+    "retrieval": RetrievalTypesEnum.Faiss.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
     "reranking": RerankingTypesEnum.Jina.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }
 
-user_greetings = [
-    "hi", "hello", "hey", "hi there", "good morning", "good afternoon", "good evening",
-    "hey grandma", "hello grandma", "hi grandma", "hey there", "yo", "what's up?",
-    "hi, i need help", "hello, can you help me?", "hi, i’m not feeling well",
-    "good day", "is anyone there?", "hi, i have a question", "hello, i need a remedy",
-    "hi grandma, i need your advice", "hello grandma, can you help me?", "hey grandma, i feel sick",
-    "hi grandma, i need a remedy", "hello, feeling unwell today", "hey grandma, not feeling great",
-    "thank you", "thanks grandma", "you are the best", "thank you grandma", "thanks a lot"
-]
+PERSIST_DIRECTORY = "./chroma_langchain_db"
+COLLECTION_NAME = "my_collection_6"
+
+ANNOY_VECTOR_STORE_FILE_PATH = "/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index"
