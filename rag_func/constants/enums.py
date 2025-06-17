@@ -64,3 +64,21 @@ class RerankingTypesEnum(Enum):
     Groq = "groq"
     Cohere = "cohere"
     Jina = "jina"
+    Voyageai = "voyageai"
+
+
+class VoyageaiEmbeddingModels(Enum):
+    Voyage3 = "voyage-3-large"
+    Voyage35 = "voyage-3.5"
+
+
+class CohereEmbeddingModels(Enum):
+    Embed4 = "embed-v4.0"
+    EmbedEnglish3 = "embed-english-v3.0"
+
+
+class CohereRerankingModels(Enum):
+    Rerank35 = "rerank-v3.5"
+    RerankEnglish3 = "rerank-english-v3.0"
+
+

@@ -3,6 +3,7 @@ import os
 import requests
 import cohere
 import re
+import voyageai
 from abc import ABC, abstractmethod
 from langchain.schema import Document
 from rag_func.constants.config import RERANKING, ACTIVE_CONFIG
@@ -109,18 +110,40 @@ class JinaReranker(BaseReranker):
 
         return reranked_docs
 
+class VoyageaiReranker(BaseReranker):
+    def __init__(self, model, top_k):
+        self.client = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+        self.model= model
+        self.top_k= top_k
+
+    def rerank(self, query: str, documents: List[Document]) -> List[Document]:
+        doc_texts = [doc.page_content for doc in documents]
+        reranked_results = self.client.rerank(
+            query=query,
+            documents=doc_texts,
+            model=self.model,
+            top_k=self.top_k,
+            truncation=True)
+
+        reranked_docs = [documents[result.index] for result in reranked_results.results
+            if isinstance(result.index, int) and 0 <= result.index < len(documents)]
+
+        return reranked_docs
+
+
 class RerankerFactory:
     @staticmethod
     def get_reranker() -> BaseReranker:
         rerank_config = RERANKING[ACTIVE_CONFIG["reranking"]]
         rerank_type = rerank_config["type"]
         model = rerank_config["model"]
-        top_k = rerank_config.get("top_k", 5)
+        top_k = rerank_config.get("top_k")
 
         reranker_classes = {
             RerankingTypesEnum.Groq.value: GroqReranker,
             RerankingTypesEnum.Cohere.value: CohereReranker,
-            RerankingTypesEnum.Jina.value: JinaReranker
+            RerankingTypesEnum.Jina.value: JinaReranker,
+            RerankingTypesEnum.Voyageai.value: VoyageaiReranker
         }
 
         reranker_class = reranker_classes.get(rerank_type)

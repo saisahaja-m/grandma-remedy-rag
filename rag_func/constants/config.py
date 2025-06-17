@@ -108,6 +108,11 @@ RERANKING = {
         "type": RerankingTypesEnum.Jina.value,
         "model": "jina-reranker-v2-base-multilingual",
         "top_k": 5
+    },
+    RerankingTypesEnum.Voyageai.value:{
+        "type": RerankingTypesEnum.Voyageai.value,
+        "model": "rerank-2",
+        "top_k": 5
     }
 }
 
@@ -172,10 +177,10 @@ APP_CONFIG = {
 ACTIVE_CONFIG = {
     "embedding": EmbeddingsTypeEnum.Voyageai.value,
     "vector_store": VectorStoresEnum.Chroma.value,
-    "retrieval": RetrievalTypesEnum.Faiss.value,
+    "retrieval": RetrievalTypesEnum.Chroma.value,
     "llm": LLMTypesEnum.OpenAiLLM.value,
     "evaluation": EvaluatorTypesEnum.DeepEvalEvaluator.value,
-    "reranking": RerankingTypesEnum.Jina.value,
+    "reranking": RerankingTypesEnum.Voyageai.value,
     "chunking": ChunkingTypeEnum.Semantic.value
 }
 
