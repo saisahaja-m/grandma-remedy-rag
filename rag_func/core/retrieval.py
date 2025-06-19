@@ -13,34 +13,36 @@ class BaseRetriever(ABC):
 
 class FaissRetriever(BaseRetriever):
     def get_relevant_documents(self, query, embeddings) -> List[Document]:
+        k = RETRIEVAL[RetrievalTypesEnum.Faiss.value]["k"]
         new_vector_store = FAISS.load_local(
             "faiss_index", embeddings, allow_dangerous_deserialization=True)
 
-        docs = new_vector_store.similarity_search(query=query)
+        docs = new_vector_store.similarity_search(query=query, k=k)
 
         return docs
 
 class AnnoyRetriever(BaseRetriever):
     def get_relevant_documents(self, query, embeddings) -> List[Document]:
+        k = RETRIEVAL[RetrievalTypesEnum.Annoy.value]["k"]
         loaded_vector_store = Annoy.load_local(
             folder_path="/home/ib-developer/Windsurf projects/grandma_remedy/annoy_index",
             embeddings=embeddings,
             allow_dangerous_deserialization=True
         )
 
-        docs = loaded_vector_store.similarity_search(query)
+        docs = loaded_vector_store.similarity_search(query=query, k=k)
         return docs
 
 class ChromaRetriever(BaseRetriever):
     def get_relevant_documents(self, query, embeddings) -> List[Document]:
-
+        k = RETRIEVAL[RetrievalTypesEnum.Chroma.value]["k"]
         persistent_client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
         vector_store = Chroma(
             client=persistent_client,
             collection_name=COLLECTION_NAME,
             embedding_function=embeddings
         )
-        docs = vector_store.similarity_search(query, k=5)
+        docs = vector_store.similarity_search(query, k=k)
 
         return docs
 
